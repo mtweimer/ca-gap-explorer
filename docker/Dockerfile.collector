@@ -1,0 +1,44 @@
+# Dockerfile for CA Gap Collector
+# Multi-stage build for optimized image size
+
+FROM mcr.microsoft.com/powershell:lts-ubuntu-22.04 AS base
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV POWERSHELL_TELEMETRY_OPTOUT=1
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+# Install dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       curl \
+       ca-certificates \
+       jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Microsoft Graph PowerShell modules
+RUN pwsh -NoLogo -NoProfile -Command \
+    "Set-PSRepository PSGallery -InstallationPolicy Trusted; \
+     Install-Module Microsoft.Graph.Authentication -Scope AllUsers -Force -AllowClobber; \
+     Install-Module Microsoft.Graph.Identity.SignIns -Scope AllUsers -Force -AllowClobber; \
+     Install-Module Microsoft.Graph.Identity.DirectoryManagement -Scope AllUsers -Force -AllowClobber; \
+     Install-Module Microsoft.Graph.Groups -Scope AllUsers -Force -AllowClobber; \
+     Install-Module Microsoft.Graph.Applications -Scope AllUsers -Force -AllowClobber"
+
+WORKDIR /workspace
+
+# Copy module
+COPY module/CAGapCollector /workspace/module/CAGapCollector
+
+# Copy legacy scripts for compatibility
+COPY scripts /workspace/scripts
+
+# Create directories
+RUN mkdir -p /workspace/output /workspace/output/entities
+
+# Entry point script
+COPY docker/entrypoint-collector.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["collect"]
+

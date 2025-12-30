@@ -1,0 +1,344 @@
+.gap-builder {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  height: 100%;
+  overflow: hidden;
+}
+
+.gap-builder__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.gap-builder__sidebar {
+  width: 400px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  background: rgba(12, 18, 28, 0.3);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gap-builder__header h2 {
+  margin: 0 0 8px 0;
+  color: #cfe0ff;
+}
+
+.gap-builder__hint {
+  margin: 0;
+  opacity: 0.75;
+  font-size: 14px;
+  color: #cfe0ff;
+}
+
+.gap-builder__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: center;
+  padding: 16px;
+  background: rgba(12, 18, 28, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+
+.gap-builder__control-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gap-builder__control-label {
+  font-weight: 600;
+  color: #cfe0ff;
+  font-size: 14px;
+}
+
+.gap-builder__toggle {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.gap-builder__toggle-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #cfe0ff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.gap-builder__toggle-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.gap-builder__toggle-btn.active {
+  background: rgba(126, 240, 194, 0.2);
+  color: #7ef0c2;
+  font-weight: 600;
+}
+
+.gap-builder__toggle-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.gap-builder__state-filters {
+  display: flex;
+  gap: 16px;
+}
+
+.gap-builder__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #cfe0ff;
+  font-size: 14px;
+}
+
+.gap-builder__checkbox input {
+  cursor: pointer;
+}
+
+.gap-builder__export-btn {
+  margin-left: auto;
+  padding: 8px 16px;
+  background: rgba(126, 240, 194, 0.15);
+  border: 1px solid rgba(126, 240, 194, 0.3);
+  color: #7ef0c2;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.gap-builder__export-btn:hover {
+  background: rgba(126, 240, 194, 0.25);
+}
+
+.gap-builder__content {
+  flex: 1;
+}
+
+.gap-builder__empty {
+  text-align: center;
+  padding: 60px 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: #cfe0ff;
+}
+
+.gap-builder__empty p {
+  margin: 8px 0;
+  opacity: 0.75;
+}
+
+.gap-builder__empty-hint {
+  font-size: 13px;
+  opacity: 0.5;
+}
+
+.gap-builder__results {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.gap-builder__overall h3,
+.gap-builder__groups h3 {
+  margin: 0 0 16px 0;
+  color: #cfe0ff;
+  font-size: 18px;
+}
+
+.gap-builder__overall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.gap-builder__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Coverage Card */
+.coverage-card {
+  background: rgba(12, 18, 28, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 16px;
+  color: #cfe0ff;
+}
+
+.coverage-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.coverage-card__header strong {
+  font-size: 15px;
+}
+
+.coverage-card__summary {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.coverage-card__bar {
+  height: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.coverage-card__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(126, 240, 194, 0.8), rgba(126, 240, 194, 0.5));
+  transition: width 0.3s ease;
+}
+
+.coverage-card__details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.coverage-card__details span {
+  white-space: nowrap;
+}
+
+.coverage-card__network-note {
+  font-size: 13px;
+  opacity: 0.85;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.coverage-card__detail {
+  font-size: 13px;
+  opacity: 0.65;
+}
+
+/* Grant Control Group */
+.grant-control-group {
+  background: rgba(12, 18, 28, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.grant-control-group__header {
+  padding: 16px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.2s;
+}
+
+.grant-control-group__header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.grant-control-group__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #cfe0ff;
+  font-size: 16px;
+}
+
+.grant-control-group__expand {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.grant-control-group__count {
+  opacity: 0.65;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.grant-control-group__coverage {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.grant-control-group__policies {
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.grant-control-group__policies h4 {
+  margin: 0 0 12px 0;
+  color: #cfe0ff;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.grant-control-group__policies ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.grant-control-group__policies li {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  color: #cfe0ff;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Badge styles (reuse from PolicySummary) */
+.badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge--enabled {
+  background: rgba(126, 240, 194, 0.2);
+  color: #7ef0c2;
+}
+
+.badge--reportOnly {
+  background: rgba(255, 193, 96, 0.2);
+  color: #ffc160;
+}
+
+.badge--disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+

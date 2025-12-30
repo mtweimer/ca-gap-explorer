@@ -1,0 +1,76 @@
+{
+  "generatedAt": "2025-10-28T00:00:00Z",
+  "metadata": {
+    "account": "sample@contoso.com",
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "scopes": [
+      "Policy.Read.All",
+      "Directory.Read.All"
+    ],
+    "policyCount": 1
+  },
+  "nodes": [
+    {
+      "id": "policy-1",
+      "label": "Baseline CA Policy",
+      "type": "policy",
+      "properties": {
+        "state": "enabled",
+        "createdDateTime": "2025-01-01T12:00:00Z",
+        "modifiedDateTime": "2025-09-01T00:00:00Z"
+      }
+    },
+    {
+      "id": "group-1",
+      "label": "Security Administrators",
+      "type": "group",
+      "properties": {
+        "memberCount": 5
+      }
+    },
+    {
+      "id": "user-1",
+      "label": "Ada Lovelace",
+      "type": "user",
+      "properties": {
+        "userPrincipalName": "adal@contoso.com"
+      }
+    },
+    {
+      "id": "app-1",
+      "label": "SharePoint Online",
+      "type": "servicePrincipal",
+      "properties": {
+        "appId": "00000003-0000-0ff1-ce00-000000000000"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "policy-1",
+      "to": "group-1",
+      "relationship": "include:group",
+      "properties": {
+        "targetDisplayName": "Security Administrators"
+      }
+    },
+    {
+      "from": "policy-1",
+      "to": "app-1",
+      "relationship": "include:servicePrincipal",
+      "properties": {
+        "targetDisplayName": "SharePoint Online"
+      }
+    },
+    {
+      "from": "group-1",
+      "to": "user-1",
+      "relationship": "member",
+      "properties": {
+        "via": [
+          "Security Administrators"
+        ]
+      }
+    }
+  ]
+}

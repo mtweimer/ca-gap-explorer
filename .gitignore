@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+web/node_modules/
+
+# Build outputs
+web/dist/
+*.tgz
+
+# Output data (may contain sensitive info)
+output/*.json
+output/*.csv
+output/entities/
+output/checkpoint_*.json
+web/public/conditional_access_*.json
+web/public/entities/
+
+# Keep sample data
+!scripts/sample-graph-data.json
+!examples/*.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# PowerShell
+*.ps1xml.backup
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

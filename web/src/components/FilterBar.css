@@ -1,0 +1,55 @@
+.filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.25rem;
+}
+
+.filterbar__section {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.filterbar__label {
+  color: #94b2ff;
+  font-size: 0.9rem;
+}
+
+.filterbar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 140, 255, 0.35);
+  background: rgba(79, 140, 255, 0.15);
+  color: #cfe0ff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.chip--ghost {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chip--active {
+  border-color: rgba(126, 240, 194, 0.6);
+  background: rgba(126, 240, 194, 0.2);
+  color: #baf7dc;
+}
+
+.filterbar__search input[type='search'] {
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(12, 18, 28, 0.75);
+  color: #e6eeff;
+  min-width: 220px;
+}
+
+

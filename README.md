@@ -1,0 +1,225 @@
+# Conditional Access Gap Analyzer
+
+[![CI](https://github.com/hoplite-industries/conditional-access-gap-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/hoplite-industries/conditional-access-gap-analyzer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+A comprehensive tool for analyzing Microsoft Entra ID (Azure AD) Conditional Access Policies to identify security gaps, visualize policy relationships, and understand coverage across your organization.
+
+![CA Gap Analyzer Dashboard](docs/assets/dashboard-preview.png)
+
+## Features
+
+- **Policy Collection**: Automated collection of Conditional Access Policies via Microsoft Graph API
+- **Gap Analysis**: Identify coverage gaps, risky exclusions, and missing controls
+- **Graph Visualization**: Interactive D3.js-based graph showing policy relationships
+- **Deep Policy Exploration**: Drill down into policies with expandable group memberships and role assignments
+- **Exposure Matrix**: Cross-policy analysis to find users/apps not covered by policies
+- **BloodHound Integration**: Export to OpenGraph format for BloodHound CE visualization
+- **Cross-Platform**: PowerShell module works on Windows, macOS, and Linux
+- **Docker Support**: Containerized deployment for easy setup
+
+## Quick Start
+
+### Prerequisites
+
+- PowerShell 7.x or Windows PowerShell 5.1
+- Microsoft Graph PowerShell SDK
+- Node.js 18+ (for web UI development)
+- Azure AD permissions: `Policy.Read.All`, `Directory.Read.All`, `Group.Read.All`, `Application.Read.All`, `RoleManagement.Read.Directory`
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/hoplite-industries/conditional-access-gap-analyzer.git
+cd conditional-access-gap-analyzer
+
+# Install PowerShell module
+Import-Module ./module/CAGapCollector/CAGapCollector.psd1
+
+# Install web dependencies
+cd web && npm install
+```
+
+### Collect Data
+
+```powershell
+# Connect and collect CA policies
+Connect-CAGapGraph -UseDeviceCode
+Get-CAPolicies -OutputPath ./output
+Export-CAGraph -InputPath ./output/conditional_access_policies.json -OutputPath ./output
+
+# Disconnect when done
+Disconnect-CAGapGraph
+```
+
+### View Results
+
+```bash
+# Start the web UI
+cd web
+npm run dev
+
+# Open http://localhost:5173 in your browser
+```
+
+## Docker Quick Start
+
+```bash
+# Run the complete pipeline
+docker-compose up
+
+# Or run collection only
+docker-compose --profile collector up
+
+# Or serve existing data
+docker-compose --profile web up
+```
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Getting Started](docs/getting-started.md) | Detailed setup and first run guide |
+| [Authentication](docs/authentication.md) | Azure AD app registration and auth methods |
+| [BloodHound Integration](docs/bloodhound-integration.md) | Exporting to OpenGraph format |
+| [API Reference](docs/api-reference.md) | PowerShell module command reference |
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     CA Gap Analyzer                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
+│  │  PowerShell  │    │    Graph     │    │   React UI   │       │
+│  │   Module     │───▶│    JSON      │───▶│  Dashboard   │       │
+│  │              │    │              │    │              │       │
+│  └──────┬───────┘    └──────────────┘    └──────────────┘       │
+│         │                    │                                   │
+│         ▼                    ▼                                   │
+│  ┌──────────────┐    ┌──────────────┐                           │
+│  │  MS Graph    │    │  OpenGraph   │                           │
+│  │    API       │    │   Export     │                           │
+│  └──────────────┘    └──────────────┘                           │
+│                              │                                   │
+│                              ▼                                   │
+│                      ┌──────────────┐                           │
+│                      │  BloodHound  │                           │
+│                      │     CE       │                           │
+│                      └──────────────┘                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Screenshots
+
+### Gap Analysis Dashboard
+Analyze coverage by grant control, condition, or policy with expandable details.
+
+### Policy Graph Visualization
+Interactive graph showing policy relationships with users, groups, roles, and applications.
+
+### Exposure Matrix
+Identify which users and applications are NOT covered by your Conditional Access policies.
+
+## Supported Conditions and Controls
+
+### User Conditions
+- Users, Groups, Directory Roles
+- Guest/External Users
+- Service Principals (Workload Identities)
+
+### Application Conditions
+- Cloud Applications
+- User Actions
+- Authentication Contexts
+
+### Other Conditions
+- User Risk Levels
+- Sign-in Risk Levels
+- Insider Risk Levels
+- Device Platforms
+- Locations (Named Locations, Countries)
+- Client Applications
+- Device Filters
+- Authentication Flows
+
+### Grant Controls
+- Block Access
+- Require MFA
+- Require Compliant Device
+- Require Hybrid Azure AD Join
+- Require Approved Client App
+- Require App Protection Policy
+- Require Password Change
+- Terms of Use
+- Authentication Strength
+
+### Session Controls
+- Sign-in Frequency
+- Persistent Browser Session
+- Continuous Access Evaluation (CAE)
+- Cloud App Security
+- Token Protection
+- Global Secure Access
+
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+
+```bash
+# Fork and clone the repository
+git clone https://github.com/YOUR_USERNAME/conditional-access-gap-analyzer.git
+
+# Install dependencies
+cd web && npm install
+
+# Start development server with hot reload
+npm run dev
+
+# Run linting
+npm run lint
+
+# Build for production
+npm run build
+```
+
+## Security
+
+This tool requires read-only access to your Azure AD tenant. It does not modify any policies or settings.
+
+**Required Permissions:**
+- `Policy.Read.All` - Read Conditional Access policies
+- `Directory.Read.All` - Read directory objects (users, groups)
+- `Group.Read.All` - Read group memberships
+- `Application.Read.All` - Read application registrations
+- `RoleManagement.Read.Directory` - Read role assignments
+
+For security concerns, please see [SECURITY.md](SECURITY.md) or contact the maintainers directly.
+
+## Roadmap
+
+- [ ] Export to CSV/Excel reports
+- [ ] Policy comparison between tenants
+- [ ] What-if analysis for policy changes
+- [ ] Integration with Microsoft Sentinel
+- [ ] Automated gap remediation suggestions
+- [ ] Multi-tenant support
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- [Microsoft Graph PowerShell SDK](https://github.com/microsoftgraph/msgraph-sdk-powershell)
+- [BloodHound CE](https://github.com/SpecterOps/BloodHound) for OpenGraph inspiration
+- [D3.js](https://d3js.org/) and [Dagre](https://github.com/dagrejs/dagre) for graph visualization
+- [Vite](https://vitejs.dev/) and [React](https://react.dev/) for the web UI
+
+---
+
+**Disclaimer:** This tool is provided as-is for security analysis purposes. Always verify findings manually and test changes in a non-production environment first.

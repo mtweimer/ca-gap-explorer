@@ -1,0 +1,215 @@
+.group-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary, #1a1a2e);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.group-tree__header {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+  border-bottom: 1px solid var(--border-color, #2d3548);
+}
+
+.group-tree__title h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #e6f1ff);
+}
+
+.group-tree__title p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, #8892b0);
+}
+
+.group-tree__controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid var(--border-color, #2d3548);
+}
+
+.group-tree__filters {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.group-tree__filters select,
+.group-tree__filters input {
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color, #2d3548);
+  border-radius: 6px;
+  color: var(--text-primary, #e6f1ff);
+  font-size: 0.85rem;
+}
+
+.group-tree__filters input {
+  width: 220px;
+}
+
+.group-tree__filters input::placeholder {
+  color: var(--text-muted, #8892b0);
+}
+
+.group-tree__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.group-tree__actions button {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color, #2d3548);
+  border-radius: 6px;
+  color: var(--text-primary, #e6f1ff);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.group-tree__actions button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.group-tree__content {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.group-tree__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-muted, #8892b0);
+}
+
+.group-tree__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.group-tree__node {
+  --indent: 0rem;
+}
+
+.group-tree__node--depth-0 { --indent: 0rem; }
+.group-tree__node--depth-1 { --indent: 1.5rem; }
+.group-tree__node--depth-2 { --indent: 3rem; }
+.group-tree__node--depth-3 { --indent: 4.5rem; }
+
+.group-tree__node-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  padding-left: calc(var(--indent) + 0.875rem);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #2d3548);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.group-tree__node-header:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.group-tree__node-header--group {
+  border-left: 3px solid #ffc480;
+}
+
+.group-tree__node-header--role {
+  border-left: 3px solid #d486ff;
+}
+
+.group-tree__node-header--user {
+  border-left: 3px solid #61c6ff;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.group-tree__node-header--servicePrincipal {
+  border-left: 3px solid #7ef0c2;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.group-tree__node-header--covered {
+  background: rgba(46, 213, 115, 0.05);
+}
+
+.group-tree__node-header--excluded {
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.group-tree__toggle {
+  width: 1rem;
+  font-size: 0.7rem;
+  color: var(--text-muted, #8892b0);
+}
+
+.group-tree__icon {
+  font-size: 1rem;
+}
+
+.group-tree__name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary, #e6f1ff);
+}
+
+.group-tree__via {
+  font-size: 0.75rem;
+  color: var(--text-muted, #8892b0);
+  font-style: italic;
+}
+
+.group-tree__count {
+  padding: 0.15rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  color: var(--text-muted, #8892b0);
+}
+
+.group-tree__coverage {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.group-tree__coverage-include {
+  font-size: 0.75rem;
+  color: #2ed573;
+  cursor: help;
+}
+
+.group-tree__coverage-exclude {
+  font-size: 0.75rem;
+  color: #ff6b6b;
+}
+
+.group-tree__children {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.group-tree__footer {
+  padding: 0.875rem 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted, #8892b0);
+  border-top: 1px solid var(--border-color, #2d3548);
+}
+

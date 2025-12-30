@@ -1,0 +1,201 @@
+{
+  "generatedAt": "2024-12-29T00:00:00.000Z",
+  "metadata": {
+    "policyCount": 5,
+    "source": "sample-data"
+  },
+  "nodes": [
+    {
+      "id": "policy-001",
+      "label": "Require MFA for Admins",
+      "type": "policy",
+      "properties": {
+        "state": "enabled",
+        "grantControls": ["mfa"],
+        "conditionsSummary": [],
+        "sessionControlsSummary": []
+      }
+    },
+    {
+      "id": "policy-002",
+      "label": "Block Legacy Authentication",
+      "type": "policy",
+      "properties": {
+        "state": "enabled",
+        "grantControls": ["block"],
+        "conditionsSummary": ["Client Apps: exchangeActiveSync, other"],
+        "sessionControlsSummary": []
+      }
+    },
+    {
+      "id": "policy-003",
+      "label": "Require Compliant Device for Office 365",
+      "type": "policy",
+      "properties": {
+        "state": "enabledForReportingButNotEnforced",
+        "grantControls": ["compliantDevice"],
+        "conditionsSummary": [],
+        "sessionControlsSummary": ["SignInFrequency"]
+      }
+    },
+    {
+      "id": "policy-004",
+      "label": "Risk-based MFA",
+      "type": "policy",
+      "properties": {
+        "state": "enabled",
+        "grantControls": ["mfa"],
+        "conditionsSummary": ["User Risk: high, medium", "Sign-in Risk: high"],
+        "sessionControlsSummary": []
+      }
+    },
+    {
+      "id": "policy-005",
+      "label": "Block External Access",
+      "type": "policy",
+      "properties": {
+        "state": "disabled",
+        "grantControls": ["block"],
+        "conditionsSummary": [],
+        "sessionControlsSummary": []
+      }
+    },
+    {
+      "id": "role-global-admin",
+      "label": "Global Administrator",
+      "type": "role",
+      "properties": {
+        "memberCount": 3,
+        "members": [
+          {"id": "user-001", "displayName": "Admin User 1", "type": "user"},
+          {"id": "user-002", "displayName": "Admin User 2", "type": "user"},
+          {"id": "user-003", "displayName": "Admin User 3", "type": "user"}
+        ]
+      }
+    },
+    {
+      "id": "group-all-users",
+      "label": "All Company Users",
+      "type": "group",
+      "properties": {
+        "memberCount": 150,
+        "members": []
+      }
+    },
+    {
+      "id": "group-executives",
+      "label": "Executive Team",
+      "type": "group",
+      "properties": {
+        "memberCount": 5,
+        "members": [
+          {"id": "user-exec-001", "displayName": "CEO", "type": "user"},
+          {"id": "user-exec-002", "displayName": "CFO", "type": "user"},
+          {"id": "user-exec-003", "displayName": "CTO", "type": "user"}
+        ]
+      }
+    },
+    {
+      "id": "app-office365",
+      "label": "Office 365",
+      "type": "servicePrincipal",
+      "properties": {}
+    },
+    {
+      "id": "app-azure-portal",
+      "label": "Azure Portal",
+      "type": "servicePrincipal",
+      "properties": {}
+    },
+    {
+      "id": "location-corporate",
+      "label": "Corporate Network",
+      "type": "namedLocation",
+      "properties": {
+        "isTrusted": true,
+        "ipRanges": ["10.0.0.0/8", "192.168.0.0/16"]
+      }
+    },
+    {
+      "id": "user-001",
+      "label": "Admin User 1",
+      "type": "user",
+      "properties": {}
+    },
+    {
+      "id": "user-002",
+      "label": "Admin User 2",
+      "type": "user",
+      "properties": {}
+    },
+    {
+      "id": "user-003",
+      "label": "Admin User 3",
+      "type": "user",
+      "properties": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "policy-001",
+      "to": "role-global-admin",
+      "relationship": "include:role",
+      "properties": {"policyName": "Require MFA for Admins", "targetDisplayName": "Global Administrator"}
+    },
+    {
+      "from": "policy-001",
+      "to": "user-001",
+      "relationship": "include:user",
+      "properties": {"policyName": "Require MFA for Admins", "targetDisplayName": "Admin User 1", "via": ["Global Administrator"]}
+    },
+    {
+      "from": "policy-001",
+      "to": "user-002",
+      "relationship": "include:user",
+      "properties": {"policyName": "Require MFA for Admins", "targetDisplayName": "Admin User 2", "via": ["Global Administrator"]}
+    },
+    {
+      "from": "policy-001",
+      "to": "user-003",
+      "relationship": "include:user",
+      "properties": {"policyName": "Require MFA for Admins", "targetDisplayName": "Admin User 3", "via": ["Global Administrator"]}
+    },
+    {
+      "from": "policy-001",
+      "to": "group-executives",
+      "relationship": "exclude:group",
+      "properties": {"policyName": "Require MFA for Admins", "targetDisplayName": "Executive Team"}
+    },
+    {
+      "from": "policy-002",
+      "to": "group-all-users",
+      "relationship": "include:group",
+      "properties": {"policyName": "Block Legacy Authentication", "targetDisplayName": "All Company Users"}
+    },
+    {
+      "from": "policy-003",
+      "to": "group-all-users",
+      "relationship": "include:group",
+      "properties": {"policyName": "Require Compliant Device for Office 365", "targetDisplayName": "All Company Users"}
+    },
+    {
+      "from": "policy-003",
+      "to": "app-office365",
+      "relationship": "include:servicePrincipal",
+      "properties": {"policyName": "Require Compliant Device for Office 365", "targetDisplayName": "Office 365"}
+    },
+    {
+      "from": "policy-004",
+      "to": "group-all-users",
+      "relationship": "include:group",
+      "properties": {"policyName": "Risk-based MFA", "targetDisplayName": "All Company Users"}
+    },
+    {
+      "from": "policy-005",
+      "to": "location-corporate",
+      "relationship": "exclude:namedLocation",
+      "properties": {"policyName": "Block External Access", "targetDisplayName": "Corporate Network"}
+    }
+  ]
+}
+

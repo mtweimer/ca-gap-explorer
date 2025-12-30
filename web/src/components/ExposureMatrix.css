@@ -1,0 +1,253 @@
+.exposure-matrix {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary, #1a1a2e);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.exposure-matrix__header {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+  border-bottom: 1px solid var(--border-color, #2d3548);
+}
+
+.exposure-matrix__title h2 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #e6f1ff);
+}
+
+.exposure-matrix__title p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted, #8892b0);
+}
+
+.exposure-matrix__stats {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.exposure-matrix__stat {
+  flex: 1;
+  padding: 0.875rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  text-align: center;
+  border: 1px solid var(--border-color, #2d3548);
+}
+
+.exposure-matrix__stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #e6f1ff);
+}
+
+.exposure-matrix__stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #8892b0);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.exposure-matrix__stat--covered {
+  border-left: 3px solid #2ed573;
+}
+
+.exposure-matrix__stat--partial {
+  border-left: 3px solid #ffa502;
+}
+
+.exposure-matrix__stat--excluded {
+  border-left: 3px solid #ff6b6b;
+}
+
+.exposure-matrix__stat--uncovered {
+  border-left: 3px solid #ff4757;
+}
+
+.exposure-matrix__controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.15);
+  border-bottom: 1px solid var(--border-color, #2d3548);
+}
+
+.exposure-matrix__filters {
+  display: flex;
+  gap: 1rem;
+}
+
+.exposure-matrix__filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.exposure-matrix__filter-group label {
+  font-size: 0.85rem;
+  color: var(--text-muted, #8892b0);
+}
+
+.exposure-matrix__filter-group select {
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color, #2d3548);
+  border-radius: 6px;
+  color: var(--text-primary, #e6f1ff);
+  font-size: 0.85rem;
+}
+
+.exposure-matrix__search input {
+  padding: 0.5rem 1rem;
+  width: 200px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color, #2d3548);
+  border-radius: 6px;
+  color: var(--text-primary, #e6f1ff);
+  font-size: 0.85rem;
+}
+
+.exposure-matrix__search input::placeholder {
+  color: var(--text-muted, #8892b0);
+}
+
+.exposure-matrix__table-container {
+  flex: 1;
+  overflow: auto;
+  padding: 0 1rem;
+}
+
+.exposure-matrix__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.exposure-matrix__table th {
+  position: sticky;
+  top: 0;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #8892b0);
+  background: var(--bg-secondary, #1a1a2e);
+  border-bottom: 1px solid var(--border-color, #2d3548);
+}
+
+.exposure-matrix__table td {
+  padding: 0.875rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-primary, #e6f1ff);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.exposure-matrix__row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.exposure-matrix__name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.exposure-matrix__icon {
+  font-size: 1rem;
+}
+
+.exposure-matrix__type {
+  color: var(--text-muted, #8892b0);
+  font-size: 0.85rem;
+}
+
+.exposure-matrix__badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.exposure-matrix__badge--covered {
+  background: rgba(46, 213, 115, 0.15);
+  color: #2ed573;
+}
+
+.exposure-matrix__badge--partial {
+  background: rgba(255, 165, 2, 0.15);
+  color: #ffa502;
+}
+
+.exposure-matrix__badge--excluded {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+}
+
+.exposure-matrix__badge--uncovered {
+  background: rgba(255, 71, 87, 0.15);
+  color: #ff4757;
+}
+
+.exposure-matrix__risk {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.exposure-matrix__risk-bar {
+  width: 60px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.exposure-matrix__risk-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.exposure-matrix__risk-value {
+  font-size: 0.85rem;
+  font-weight: 600;
+  min-width: 2rem;
+}
+
+.exposure-matrix__none {
+  color: var(--text-muted, #8892b0);
+  font-style: italic;
+}
+
+.exposure-matrix__excluded-text {
+  color: #ff6b6b;
+}
+
+.exposure-matrix__empty {
+  text-align: center;
+  padding: 3rem 1rem !important;
+  color: var(--text-muted, #8892b0);
+}
+
+.exposure-matrix__footer {
+  padding: 0.875rem 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted, #8892b0);
+  border-top: 1px solid var(--border-color, #2d3548);
+}
+

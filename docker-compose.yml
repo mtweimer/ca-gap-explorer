@@ -1,0 +1,55 @@
+version: '3.9'
+
+# CA Gap Analyzer Docker Compose Configuration
+# 
+# Usage:
+#   docker-compose up                         # Run full pipeline (legacy)
+#   docker-compose -f docker/docker-compose.yml --profile collector up   # Collection only
+#   docker-compose -f docker/docker-compose.yml --profile web up         # Web UI only
+#   docker-compose -f docker/docker-compose.yml --profile full up        # Full pipeline
+#   docker-compose -f docker/docker-compose.yml --profile dev up         # Development mode
+
+services:
+  # Collection service - runs PowerShell scripts to gather data
+  collector:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.collector
+    image: ca-gap-collector:latest
+    container_name: ca-gap-collector
+    environment:
+      - OUTPUT_DIR=/workspace/output
+      - POWERSHELL_TELEMETRY_OPTOUT=1
+      - CA_GAP_CLIENT_ID=${CA_GAP_CLIENT_ID:-}
+      - CA_GAP_CLIENT_SECRET=${CA_GAP_CLIENT_SECRET:-}
+      - CA_GAP_TENANT_ID=${CA_GAP_TENANT_ID:-}
+    volumes:
+      - ./scripts:/workspace/scripts:ro
+      - ./module/CAGapCollector:/workspace/module/CAGapCollector:ro
+      - ./output:/workspace/output
+      - ./web/public:/workspace/web/public
+    tty: true
+    stdin_open: true
+    command: collect
+
+  # Web UI service - serves the visualization application
+  web:
+    image: node:20-alpine
+    container_name: ca-gap-web
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      collector:
+        condition: service_completed_successfully
+        required: false
+
+networks:
+  default:
+    name: ca-gap-network
