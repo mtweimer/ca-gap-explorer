@@ -3,12 +3,13 @@ import { GraphView } from './components/GraphView'
 import { FilterBar } from './components/FilterBar'
 import { PolicySummary } from './components/PolicySummary'
 import { PolicyDetailsModal } from './components/PolicyDetailsModal'
-import { ExposureMatrix } from './components/ExposureMatrix'
 import { GroupMembershipTree } from './components/GroupMembershipTree'
 import { ConditionAnalyzer } from './components/ConditionAnalyzer'
-import { ObjectsTab } from './components/ObjectsTab'
 import { GapBuilderTab } from './components/GapBuilderTab'
 import { PolicyOrganizer } from './components/PolicyOrganizer'
+import { PolicyTable } from './components/PolicyTable'
+import { MemberModal, type Member } from './components/MemberModal'
+import { WhatIfSimulator } from './components/WhatIfSimulator'
 import { loadGraphData } from './data/loadGraphData'
 import type { GraphData } from './types/graph'
 import './App.css'
@@ -21,9 +22,24 @@ function App() {
   const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set())
   const [selectedGrants, setSelectedGrants] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
-  const [viewMode, setViewMode] = useState<'gaps' | 'graph' | 'table' | 'objects' | 'exposure' | 'groups' | 'conditions'>('gaps')
+  const [viewMode, setViewMode] = useState<'gaps' | 'graph' | 'table' | 'groups' | 'conditions' | 'whatif'>('gaps')
   const [detailsPolicyId, setDetailsPolicyId] = useState<string | null>(null)
   const [expandMembership, setExpandMembership] = useState<boolean>(false)
+  const [rawPolicies, setRawPolicies] = useState<any[]>([])
+  
+  // Member modal state for graph view
+  const [memberModalOpen, setMemberModalOpen] = useState(false)
+  const [selectedMemberEntity, setSelectedMemberEntity] = useState<{
+    id: string
+    type: 'group' | 'role'
+    name: string
+    members: Member[]
+    nestedMembers?: Member[]
+    nestedGroups?: Array<{ id: string; displayName: string; depth: number }>
+    totalMemberCount?: number
+  } | null>(null)
+  const [groupsData, setGroupsData] = useState<any[]>([])
+  const [rolesData, setRolesData] = useState<any[]>([])
 
   useEffect(() => {
     async function loadData() {
@@ -41,6 +57,23 @@ function App() {
     loadData().catch((err) => {
       console.error(err)
     })
+    
+    // Load groups and roles for member modal
+    fetch('/entities/groups.json', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : [])
+      .then(g => setGroupsData(g))
+      .catch(() => setGroupsData([]))
+    
+    fetch('/entities/roles.json', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : [])
+      .then(r => setRolesData(r))
+      .catch(() => setRolesData([]))
+    
+    // Load raw policies for What If simulator
+    fetch('/conditional_access_policies.json', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : { policies: [] })
+      .then(data => setRawPolicies(data.policies || []))
+      .catch(() => setRawPolicies([]))
   }, [])
 
   const policySummaries = useMemo(() => {
@@ -48,10 +81,10 @@ function App() {
     const policyNodes = graphData.nodes.filter((node) => node.type === 'policy')
     const mapState = (raw: unknown) => {
       const s = String(raw ?? 'unknown')
-      if (s === 'enabledForReportingButNotEnforced') return { key: 'reportOnly', label: 'Report Only' }
-      if (s === 'enabled') return { key: 'enabled', label: 'Enabled' }
-      if (s === 'disabled') return { key: 'disabled', label: 'Disabled' }
-      return { key: s, label: s }
+      if (s === 'enabledForReportingButNotEnforced') return { key: 'reportOnly', label: 'Report Only', sortOrder: 2 }
+      if (s === 'enabled') return { key: 'enabled', label: 'Enabled', sortOrder: 1 }
+      if (s === 'disabled') return { key: 'disabled', label: 'Disabled', sortOrder: 3 }
+      return { key: s, label: s, sortOrder: 4 }
     }
     const items = policyNodes.map((node) => {
       const st = mapState(node.properties?.state)
@@ -60,12 +93,15 @@ function App() {
         label: node.label,
         stateKey: st.key,
         stateLabel: st.label,
+        stateSortOrder: st.sortOrder,
         grantControls: Array.isArray(node.properties?.grantControls)
           ? (node.properties?.grantControls as unknown[]).map(String)
           : []
       }
     })
 
+    // Sort by state: Enabled first, then Report Only, then Disabled
+    items.sort((a, b) => a.stateSortOrder - b.stateSortOrder)
     return items
   }, [graphData])
 
@@ -180,6 +216,27 @@ function App() {
     setSelectedPolicyIds(next)
   }
 
+  // Handle node click from graph view to open member modal
+  function handleGraphNodeClick(nodeId: string, nodeType: string, nodeLabel: string) {
+    if (nodeType !== 'group' && nodeType !== 'role') return
+    
+    const source = nodeType === 'group' ? groupsData : rolesData
+    const entity = source.find((e: any) => e.id === nodeId)
+    
+    if (entity) {
+      setSelectedMemberEntity({
+        id: nodeId,
+        type: nodeType as 'group' | 'role',
+        name: nodeLabel || entity.displayName,
+        members: entity.members || [],
+        nestedMembers: entity.nestedMembers || [],
+        nestedGroups: entity.nestedGroups || [],
+        totalMemberCount: entity.totalMemberCount
+      })
+      setMemberModalOpen(true)
+    }
+  }
+
   return (
     <main className="app">
       <header className="app__header">
@@ -213,27 +270,31 @@ function App() {
             type="button"
             className={viewMode === 'gaps' ? 'active' : ''}
             onClick={() => setViewMode('gaps')}
+            title="Coverage analysis and gap identification"
           >
-            Gaps
+            Coverage
           </button>
           <button
             type="button"
-            className={viewMode === 'exposure' ? 'active' : ''}
-            onClick={() => setViewMode('exposure')}
+            className={viewMode === 'table' ? 'active' : ''}
+            onClick={() => setViewMode('table')}
+            title="All policies with expandable details"
           >
-            Exposures
+            Policies
           </button>
           <button
             type="button"
             className={viewMode === 'conditions' ? 'active' : ''}
             onClick={() => setViewMode('conditions')}
+            title="Analyze by condition, grant, and session controls"
           >
-            Conditions
+            Analyzer
           </button>
           <button
             type="button"
             className={viewMode === 'groups' ? 'active' : ''}
             onClick={() => setViewMode('groups')}
+            title="Group membership drill-down"
           >
             Groups
           </button>
@@ -241,37 +302,35 @@ function App() {
             type="button"
             className={viewMode === 'graph' ? 'active' : ''}
             onClick={() => setViewMode('graph')}
+            title="Visual policy relationships"
           >
             Graph
           </button>
           <button
             type="button"
-            className={viewMode === 'table' ? 'active' : ''}
-            onClick={() => setViewMode('table')}
+            className={viewMode === 'whatif' ? 'active' : ''}
+            onClick={() => setViewMode('whatif')}
+            title="What If? Policy Simulator"
           >
-            Table
-          </button>
-          <button
-            type="button"
-            className={viewMode === 'objects' ? 'active' : ''}
-            onClick={() => setViewMode('objects')}
-          >
-            Objects
+            What If
           </button>
         </div>
       </header>
 
       <section className="app__content">
-        <div className="panel panel--left">
-          <PolicySummary
-            policies={filteredPolicies}
-            selectedPolicyIds={selectedPolicyIds}
-            onTogglePolicy={togglePolicySelection}
-            onShowDetails={setDetailsPolicyId}
-            onSelectAll={() => setSelectedPolicyIds(new Set(filteredPolicies.map(p => p.id)))}
-            onSelectNone={() => setSelectedPolicyIds(new Set())}
-          />
-        </div>
+        {/* Hide sidebar for What If and Analyzer views - they have integrated policy selectors */}
+        {viewMode !== 'whatif' && viewMode !== 'conditions' && (
+          <div className="panel panel--left">
+            <PolicySummary
+              policies={filteredPolicies}
+              selectedPolicyIds={selectedPolicyIds}
+              onTogglePolicy={togglePolicySelection}
+              onShowDetails={setDetailsPolicyId}
+              onSelectAll={() => setSelectedPolicyIds(new Set(filteredPolicies.map(p => p.id)))}
+              onSelectNone={() => setSelectedPolicyIds(new Set())}
+            />
+          </div>
+        )}
         {viewMode === 'graph' ? (
           <>
             <div className="panel panel--main">
@@ -279,6 +338,7 @@ function App() {
                 graph={selectedPoliciesData?.neighborhood ?? { generatedAt: '', metadata: {}, nodes: [], edges: [] }}
                 selectedPolicyIds={selectedPolicyIds}
                 expandMembership={expandMembership}
+                onNodeClick={handleGraphNodeClick}
               />
             </div>
             {selectedPoliciesData && (
@@ -374,65 +434,30 @@ function App() {
             )}
           </>
         ) : viewMode === 'table' ? (
-          <div className="panel panel--table">
-            <table className="policy-table">
-              <thead>
-                <tr>
-                  <th>Policy Name</th>
-                  <th>State</th>
-                  <th>Grant Controls</th>
-                  <th>Includes</th>
-                  <th>Excludes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPolicies.map((p) => {
-                  const edges = graphData.edges.filter((e) => e.from === p.id)
-                  const includes = edges.filter((e) => e.relationship.startsWith('include'))
-                  const excludes = edges.filter((e) => e.relationship.startsWith('exclude'))
-                  const node = graphData.nodes.find((n) => n.id === p.id)
-                  const grants = Array.isArray(node?.properties?.grantControls)
-                    ? (node?.properties?.grantControls as string[])
-                    : []
-                  return (
-                    <tr 
-                      key={p.id} 
-                      className={selectedPolicyIds.has(p.id) ? 'selected' : ''}
-                    >
-                      <td 
-                        onClick={() => setDetailsPolicyId(p.id)}
-                        style={{ cursor: 'pointer' }}
-                        title="Click to view details"
-                      >
-                        {p.label}
-                      </td>
-                      <td>
-                        <span className={`badge badge--${p.stateKey}`}>{p.stateLabel}</span>
-                      </td>
-                      <td>{grants.join(', ')}</td>
-                      <td>{includes.length}</td>
-                      <td>{excludes.length}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-      </div>
+          <div className="panel panel--table panel--full">
+            <PolicyTable
+              graphData={graphData}
+              policies={filteredPolicies}
+              selectedPolicyIds={selectedPolicyIds}
+              onShowDetails={setDetailsPolicyId}
+            />
+          </div>
         ) : viewMode === 'gaps' && graphData ? (
           <div className="panel panel--main">
             <GapBuilderTab
               graphData={graphData}
               selectedPolicyIds={selectedPolicyIds}
-              policySummaries={policySummaries}
+              rawPolicies={rawPolicies}
             />
           </div>
-        ) : viewMode === 'objects' && graphData ? (
-          <div className="panel panel--main">
-            <ObjectsTab graphData={graphData} />
-          </div>
-        ) : viewMode === 'exposure' && graphData ? (
+        ) : viewMode === 'whatif' && graphData ? (
           <div className="panel panel--main panel--full">
-            <ExposureMatrix graphData={graphData} />
+            <WhatIfSimulator
+              graphData={graphData}
+              rawPolicies={rawPolicies}
+              policySummaries={policySummaries}
+              onPolicySelect={setDetailsPolicyId}
+            />
           </div>
         ) : viewMode === 'groups' && graphData ? (
           <div className="panel panel--main panel--full">
@@ -456,6 +481,21 @@ function App() {
           policyId={detailsPolicyId}
           graphData={graphData}
           onClose={() => setDetailsPolicyId(null)}
+        />
+      )}
+
+      {/* Member Modal for graph node clicks */}
+      {selectedMemberEntity && (
+        <MemberModal
+          isOpen={memberModalOpen}
+          onClose={() => setMemberModalOpen(false)}
+          entityId={selectedMemberEntity.id}
+          entityType={selectedMemberEntity.type}
+          entityName={selectedMemberEntity.name}
+          members={selectedMemberEntity.members}
+          nestedMembers={selectedMemberEntity.nestedMembers}
+          nestedGroups={selectedMemberEntity.nestedGroups}
+          totalMemberCount={selectedMemberEntity.totalMemberCount}
         />
       )}
     </main>

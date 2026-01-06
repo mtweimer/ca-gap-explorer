@@ -1,6 +1,7 @@
-// GroupMembershipTree - Expandable group hierarchy visualization
-import { useState, useMemo } from 'react'
-import type { GraphData, GraphNode } from '../types/graph'
+// GroupMembershipTree - Expandable group hierarchy visualization with member data
+import { useState, useMemo, useEffect } from 'react'
+import type { GraphData } from '../types/graph'
+import { MemberModal, type Member } from './MemberModal'
 import './GroupMembershipTree.css'
 
 interface GroupMembershipTreeProps {
@@ -8,34 +9,71 @@ interface GroupMembershipTreeProps {
   initialExpandedGroups?: Set<string>
 }
 
-interface TreeNode {
+interface GroupEntity {
   id: string
-  name: string
-  type: 'group' | 'role' | 'user' | 'servicePrincipal' | 'device'
+  displayName: string
+  mail?: string
+  securityEnabled?: boolean
+  groupTypes?: string[]
+  members?: Member[]
   memberCount?: number
-  children: TreeNode[]
-  via?: string[]
-  properties?: Record<string, unknown>
-  policyCoverage: {
-    includeCount: number
-    excludeCount: number
-    policies: string[]
-  }
+  nestedMembers?: Member[]
+  nestedMemberCount?: number
+  nestedGroups?: Array<{ id: string; displayName: string; depth: number }>
+  totalMemberCount?: number
+  hasNesting?: boolean
+  type: string
 }
 
-export function GroupMembershipTree({ graphData, initialExpandedGroups }: GroupMembershipTreeProps) {
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(
-    initialExpandedGroups || new Set()
-  )
+interface RoleEntity {
+  id: string
+  roleId: string
+  displayName: string
+  description?: string
+  members?: Member[]
+  memberCount?: number
+  type: string
+}
+
+export function GroupMembershipTree({ graphData }: GroupMembershipTreeProps) {
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
   const [showType, setShowType] = useState<'all' | 'group' | 'role'>('all')
+  const [groupsData, setGroupsData] = useState<GroupEntity[]>([])
+  const [rolesData, setRolesData] = useState<RoleEntity[]>([])
+  const [loading, setLoading] = useState(true)
+  
+  // Modal state
+  const [memberModalOpen, setMemberModalOpen] = useState(false)
+  const [selectedEntity, setSelectedEntity] = useState<{
+    id: string
+    type: 'group' | 'role'
+    name: string
+    members: Member[]
+    nestedMembers?: Member[]
+    nestedGroups?: Array<{ id: string; displayName: string; depth: number }>
+    totalMemberCount?: number
+  } | null>(null)
 
-  const { tree } = useMemo(() => {
-    const nodeMap = new Map<string, GraphNode>()
-    graphData.nodes.forEach(n => nodeMap.set(n.id, n))
+  // Load groups and roles data
+  useEffect(() => {
+    Promise.all([
+      fetch('/entities/groups.json', { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : [])
+        .catch(() => []),
+      fetch('/entities/roles.json', { cache: 'no-store' })
+        .then(r => r.ok ? r.json() : [])
+        .catch(() => [])
+    ]).then(([groups, roles]) => {
+      setGroupsData(groups)
+      setRolesData(roles)
+      setLoading(false)
+    })
+  }, [])
 
-    // Build policy coverage map
-    const policyMap = new Map<string, { includes: Set<string>; excludes: Set<string> }>()
+  // Build policy coverage map
+  const policyMap = useMemo(() => {
+    const map = new Map<string, { includes: Set<string>; excludes: Set<string> }>()
     const policyNames = new Map<string, string>()
     
     graphData.nodes.filter(n => n.type === 'policy').forEach(p => {
@@ -44,10 +82,10 @@ export function GroupMembershipTree({ graphData, initialExpandedGroups }: GroupM
 
     graphData.edges.forEach(edge => {
       const [scope] = edge.relationship.split(':')
-      if (!policyMap.has(edge.to)) {
-        policyMap.set(edge.to, { includes: new Set(), excludes: new Set() })
+      if (!map.has(edge.to)) {
+        map.set(edge.to, { includes: new Set(), excludes: new Set() })
       }
-      const coverage = policyMap.get(edge.to)!
+      const coverage = map.get(edge.to)!
       if (scope === 'include') {
         coverage.includes.add(edge.from)
       } else if (scope === 'exclude') {
@@ -55,74 +93,46 @@ export function GroupMembershipTree({ graphData, initialExpandedGroups }: GroupM
       }
     })
 
-    // Build tree from groups and roles
-    const treeNodes: TreeNode[] = []
-
-    graphData.nodes
-      .filter(n => n.type === 'group' || n.type === 'role')
-      .forEach(node => {
-        const props = node.properties as Record<string, unknown> || {}
-        const membersRaw = props.members
-        const members = Array.isArray(membersRaw) ? membersRaw as Array<Record<string, unknown>> : []
-        const coverage = policyMap.get(node.id)
-
-        const buildChildren = (memberList: Array<Record<string, unknown>>): TreeNode[] => {
-          return memberList.map(member => {
-            const memberCoverage = policyMap.get(member.id as string)
-            return {
-              id: member.id as string,
-              name: member.displayName as string || member.id as string,
-              type: member.type as TreeNode['type'] || 'user',
-              via: member.via as string[],
-              properties: member,
-              children: [],
-              policyCoverage: {
-                includeCount: memberCoverage?.includes.size || 0,
-                excludeCount: memberCoverage?.excludes.size || 0,
-                policies: Array.from(memberCoverage?.includes || []).map(id => policyNames.get(id) || id)
-              }
-            }
-          })
-        }
-
-        treeNodes.push({
-          id: node.id,
-          name: node.label,
-          type: node.type as 'group' | 'role',
-          memberCount: members.filter(m => m.type !== 'group').length,
-          children: buildChildren(members),
-          properties: props,
-          policyCoverage: {
-            includeCount: coverage?.includes.size || 0,
-            excludeCount: coverage?.excludes.size || 0,
-            policies: Array.from(coverage?.includes || []).map(id => policyNames.get(id) || id)
-          }
-        })
-      })
-
-    // Sort by member count descending
-    treeNodes.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))
-
-    return { tree: treeNodes, policyMap }
+    return { map, policyNames }
   }, [graphData])
 
-  const filteredTree = useMemo(() => {
-    let nodes = tree
-
-    if (showType !== 'all') {
-      nodes = nodes.filter(n => n.type === showType)
+  // Filter and prepare data
+  const filteredData = useMemo(() => {
+    const term = searchTerm.toLowerCase()
+    
+    const filterFn = (item: GroupEntity | RoleEntity) => {
+      if (term && !item.displayName.toLowerCase().includes(term)) {
+        // Also search in members
+        const members = item.members || []
+        if (!members.some(m => m.displayName?.toLowerCase().includes(term))) {
+          return false
+        }
+      }
+      return true
     }
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      nodes = nodes.filter(n => 
-        n.name.toLowerCase().includes(term) ||
-        n.children.some(c => c.name.toLowerCase().includes(term))
-      )
-    }
+    let groups = showType === 'role' ? [] : groupsData.filter(filterFn)
+    let roles = showType === 'group' ? [] : rolesData.filter(filterFn)
 
-    return nodes
-  }, [tree, showType, searchTerm])
+    // Sort by member count
+    groups = groups.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))
+    roles = roles.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))
+
+    return { groups, roles }
+  }, [groupsData, rolesData, showType, searchTerm])
+
+  const openMemberModal = (entity: GroupEntity | RoleEntity, type: 'group' | 'role') => {
+    setSelectedEntity({
+      id: entity.id,
+      type,
+      name: entity.displayName,
+      members: entity.members || [],
+      nestedMembers: (entity as GroupEntity).nestedMembers || [],
+      nestedGroups: (entity as GroupEntity).nestedGroups || [],
+      totalMemberCount: (entity as GroupEntity).totalMemberCount
+    })
+    setMemberModalOpen(true)
+  }
 
   const toggleNode = (nodeId: string) => {
     setExpandedNodes(prev => {
@@ -137,19 +147,48 @@ export function GroupMembershipTree({ graphData, initialExpandedGroups }: GroupM
   }
 
   const expandAll = () => {
-    setExpandedNodes(new Set(tree.map(n => n.id)))
+    const allIds = [...groupsData.map(g => g.id), ...rolesData.map(r => r.id)]
+    setExpandedNodes(new Set(allIds))
   }
 
   const collapseAll = () => {
     setExpandedNodes(new Set())
   }
 
+  const getCoverage = (entityId: string) => {
+    const coverage = policyMap.map.get(entityId)
+    return {
+      includeCount: coverage?.includes.size || 0,
+      excludeCount: coverage?.excludes.size || 0,
+      policies: Array.from(coverage?.includes || []).map(id => policyMap.policyNames.get(id) || id)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="group-tree">
+        <div className="group-tree__loading">Loading groups and roles...</div>
+      </div>
+    )
+  }
+
+  const totalGroups = filteredData.groups.length
+  const totalRoles = filteredData.roles.length
+  const totalMembers = 
+    filteredData.groups.reduce((sum, g) => sum + (g.memberCount || 0), 0) +
+    filteredData.roles.reduce((sum, r) => sum + (r.memberCount || 0), 0)
+
   return (
     <div className="group-tree">
       <div className="group-tree__header">
         <div className="group-tree__title">
           <h2>Group & Role Membership</h2>
-          <p>Explore nested group memberships and role assignments</p>
+          <p>Explore group and role memberships with member details</p>
+        </div>
+        <div className="group-tree__stats">
+          <span className="group-tree__stat">{totalGroups} groups</span>
+          <span className="group-tree__stat">{totalRoles} roles</span>
+          <span className="group-tree__stat">{totalMembers} total members</span>
         </div>
       </div>
 
@@ -163,7 +202,7 @@ export function GroupMembershipTree({ graphData, initialExpandedGroups }: GroupM
 
           <input
             type="text"
-            placeholder="Search groups or members..."
+            placeholder="Search groups, roles, or members..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
@@ -176,107 +215,167 @@ export function GroupMembershipTree({ graphData, initialExpandedGroups }: GroupM
       </div>
 
       <div className="group-tree__content">
-        {filteredTree.length === 0 ? (
+        {totalGroups === 0 && totalRoles === 0 ? (
           <div className="group-tree__empty">
-            No groups or roles found
+            {groupsData.length === 0 && rolesData.length === 0 
+              ? 'No groups or roles data available. Run Get-DirectoryObjects to collect member data.'
+              : 'No groups or roles match your search.'
+            }
           </div>
         ) : (
           <div className="group-tree__list">
-            {filteredTree.map(node => (
-              <TreeNodeComponent
-                key={node.id}
-                node={node}
-                isExpanded={expandedNodes.has(node.id)}
-                onToggle={() => toggleNode(node.id)}
-                depth={0}
-              />
-            ))}
+            {/* Groups Section */}
+            {filteredData.groups.length > 0 && (
+              <div className="group-tree__section">
+                <h3 className="group-tree__section-title">👥 Groups ({filteredData.groups.length})</h3>
+                {filteredData.groups.map(group => (
+                  <GroupNode
+                    key={group.id}
+                    entity={group}
+                    type="group"
+                    isExpanded={expandedNodes.has(group.id)}
+                    onToggle={() => toggleNode(group.id)}
+                    onViewMembers={() => openMemberModal(group, 'group')}
+                    coverage={getCoverage(group.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Roles Section */}
+            {filteredData.roles.length > 0 && (
+              <div className="group-tree__section">
+                <h3 className="group-tree__section-title">🛡️ Roles ({filteredData.roles.length})</h3>
+                {filteredData.roles.map(role => (
+                  <GroupNode
+                    key={role.id}
+                    entity={role}
+                    type="role"
+                    isExpanded={expandedNodes.has(role.id)}
+                    onToggle={() => toggleNode(role.id)}
+                    onViewMembers={() => openMemberModal(role, 'role')}
+                    coverage={getCoverage(role.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      <div className="group-tree__footer">
-        {tree.length} groups/roles, {tree.reduce((sum, n) => sum + n.children.length, 0)} total members
-      </div>
-    </div>
-  )
-}
-
-interface TreeNodeComponentProps {
-  node: TreeNode
-  isExpanded: boolean
-  onToggle: () => void
-  depth: number
-}
-
-function TreeNodeComponent({ node, isExpanded, onToggle, depth }: TreeNodeComponentProps) {
-  const hasChildren = node.children.length > 0
-  const isContainer = node.type === 'group' || node.type === 'role'
-
-  const typeIcons: Record<string, string> = {
-    group: '👥',
-    role: '🎛️',
-    user: '👤',
-    servicePrincipal: '🔑',
-    device: '💻'
-  }
-
-  const coverageClass = 
-    node.policyCoverage.excludeCount > 0 ? 'excluded' :
-    node.policyCoverage.includeCount > 0 ? 'covered' : 'uncovered'
-
-  return (
-    <div className={`group-tree__node group-tree__node--depth-${Math.min(depth, 3)}`}>
-      <div 
-        className={`group-tree__node-header group-tree__node-header--${node.type} group-tree__node-header--${coverageClass}`}
-        onClick={hasChildren ? onToggle : undefined}
-      >
-        {hasChildren && (
-          <span className="group-tree__toggle">
-            {isExpanded ? '▼' : '▶'}
-          </span>
-        )}
-        
-        <span className="group-tree__icon">{typeIcons[node.type] || '•'}</span>
-        
-        <span className="group-tree__name">{node.name}</span>
-        
-        {node.via && node.via.length > 0 && (
-          <span className="group-tree__via">via {node.via.join(' → ')}</span>
-        )}
-        
-        {isContainer && node.memberCount !== undefined && (
-          <span className="group-tree__count">{node.memberCount} members</span>
-        )}
-
-        <span className="group-tree__coverage">
-          {node.policyCoverage.includeCount > 0 && (
-            <span className="group-tree__coverage-include" title={`Included in: ${node.policyCoverage.policies.join(', ')}`}>
-              ✓ {node.policyCoverage.includeCount}
-            </span>
-          )}
-          {node.policyCoverage.excludeCount > 0 && (
-            <span className="group-tree__coverage-exclude">
-              ✗ {node.policyCoverage.excludeCount}
-            </span>
-          )}
-        </span>
-      </div>
-
-      {isExpanded && hasChildren && (
-        <div className="group-tree__children">
-          {node.children.map((child, idx) => (
-            <TreeNodeComponent
-              key={`${child.id}-${idx}`}
-              node={child}
-              isExpanded={false}
-              onToggle={() => {}}
-              depth={depth + 1}
-            />
-          ))}
-        </div>
+      {/* Member Modal */}
+      {selectedEntity && (
+        <MemberModal
+          isOpen={memberModalOpen}
+          onClose={() => setMemberModalOpen(false)}
+          entityId={selectedEntity.id}
+          entityType={selectedEntity.type}
+          entityName={selectedEntity.name}
+          members={selectedEntity.members}
+          nestedMembers={selectedEntity.nestedMembers}
+          nestedGroups={selectedEntity.nestedGroups}
+          totalMemberCount={selectedEntity.totalMemberCount}
+        />
       )}
     </div>
   )
 }
 
+// Group/Role Node Component
+function GroupNode({
+  entity,
+  type,
+  isExpanded,
+  onToggle,
+  onViewMembers,
+  coverage
+}: {
+  entity: GroupEntity | RoleEntity
+  type: 'group' | 'role'
+  isExpanded: boolean
+  onToggle: () => void
+  onViewMembers: () => void
+  coverage: { includeCount: number; excludeCount: number; policies: string[] }
+}) {
+  const members = entity.members || []
+  const memberCount = entity.memberCount || members.length
+  const hasNesting = (entity as GroupEntity).hasNesting
+  const nestedCount = (entity as GroupEntity).nestedMemberCount || 0
+  
+  const coverageClass = 
+    coverage.excludeCount > 0 ? 'excluded' :
+    coverage.includeCount > 0 ? 'covered' : 'uncovered'
+
+  const typeIcon = type === 'group' ? '👥' : '🛡️'
+
+  return (
+    <div className="group-tree__node">
+      <div 
+        className={`group-tree__node-header group-tree__node-header--${type} group-tree__node-header--${coverageClass}`}
+        onClick={onToggle}
+      >
+        <span className="group-tree__toggle">
+          {members.length > 0 ? (isExpanded ? '▼' : '▶') : ' '}
+        </span>
+        
+        <span className="group-tree__icon">{typeIcon}</span>
+        
+        <span className="group-tree__name">{entity.displayName}</span>
+        
+        <div className="group-tree__badges">
+          <span className="group-tree__count">{memberCount} members</span>
+          {hasNesting && nestedCount > 0 && (
+            <span className="group-tree__nested-count">+{nestedCount} nested</span>
+          )}
+        </div>
+
+        <div className="group-tree__coverage">
+          {coverage.includeCount > 0 && (
+            <span className="group-tree__coverage-include" title={`Included in: ${coverage.policies.join(', ')}`}>
+              ✓ {coverage.includeCount}
+            </span>
+          )}
+          {coverage.excludeCount > 0 && (
+            <span className="group-tree__coverage-exclude">
+              ✗ {coverage.excludeCount}
+            </span>
+          )}
+        </div>
+
+        <button 
+          className="group-tree__view-btn"
+          onClick={(e) => { e.stopPropagation(); onViewMembers(); }}
+        >
+          View Members
+        </button>
+      </div>
+
+      {isExpanded && members.length > 0 && (
+        <div className="group-tree__children">
+          {members.slice(0, 20).map((member, idx) => (
+            <div key={`${member.id}-${idx}`} className="group-tree__member">
+              <span className="group-tree__member-icon">
+                {member.type === 'user' ? '👤' : 
+                 member.type === 'group' ? '👥' : 
+                 member.type === 'servicePrincipal' ? '🔧' : 
+                 member.type === 'device' ? '💻' : '•'}
+              </span>
+              <span className="group-tree__member-name">
+                {member.displayName || member.id}
+              </span>
+              <span className="group-tree__member-type">{member.type}</span>
+            </div>
+          ))}
+          {members.length > 20 && (
+            <div className="group-tree__more">
+              ... and {members.length - 20} more members. 
+              <button onClick={(e) => { e.stopPropagation(); onViewMembers(); }}>
+                View all
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

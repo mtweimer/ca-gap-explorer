@@ -46,12 +46,17 @@ export function buildObjectsIndexWithCountsSync(
   const index = buildObjectsIndexMerged(graphData, rawPolicies)
 
   if (counts) {
-    if (counts.users) index.totals.user = counts.users
-    if (counts.groups) index.totals.group = counts.groups
-    if (counts.roles) index.totals.role = counts.roles
-    if (counts.servicePrincipals) index.totals.servicePrincipal = counts.servicePrincipals
-    if (counts.namedLocations) index.totals.namedLocation = counts.namedLocations
-    if (counts.organizations) index.totals.organization = counts.organizations
+    // Handle both camelCase and lowercase keys from counts.json
+    index.totals.user = counts.user ?? counts.users ?? index.totals.user
+    index.totals.group = counts.group ?? counts.groups ?? index.totals.group
+    index.totals.role = counts.role ?? counts.roles ?? index.totals.role
+    index.totals.servicePrincipal = counts.serviceprincipal ?? counts.servicePrincipal ?? counts.servicePrincipals ?? index.totals.servicePrincipal
+    index.totals.namedLocation = counts.namedlocation ?? counts.namedLocation ?? counts.namedLocations ?? index.totals.namedLocation
+    index.totals.organization = counts.organization ?? counts.organizations ?? index.totals.organization
+    // Also handle application count for resource coverage
+    if (counts.application !== undefined) {
+      (index.totals as Record<string, number>).application = counts.application
+    }
   }
 
   return index

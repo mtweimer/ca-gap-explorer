@@ -238,8 +238,11 @@ function Get-DirectoryObjects {
         [string]$OutputPath,
 
         [Parameter()]
-        [ValidateSet('User', 'Group', 'ServicePrincipal', 'Role', 'NamedLocation')]
-        [string[]]$Types
+        [ValidateSet('User', 'Group', 'ServicePrincipal', 'Application', 'Role', 'NamedLocation')]
+        [string[]]$Types,
+
+        [Parameter()]
+        [switch]$ResolveNestedGroups
     )
 
     if (-not (Test-CAGapConnection)) {
@@ -255,7 +258,7 @@ function Get-DirectoryObjects {
         New-Item -Path $entitiesPath -ItemType Directory -Force | Out-Null
     }
 
-    $allTypes = @('User', 'Group', 'ServicePrincipal', 'Role', 'NamedLocation')
+    $allTypes = @('User', 'Group', 'ServicePrincipal', 'Application', 'Role', 'NamedLocation')
     $typesToCollect = if ($Types) { $Types } else { $allTypes }
 
     $counts = [ordered]@{}
@@ -282,12 +285,41 @@ function Get-DirectoryObjects {
                 'Group' {
                     $groups = Get-MgGroup -All -Select Id,DisplayName,Mail,SecurityEnabled,GroupTypes
                     $objects = $groups | ForEach-Object {
+                        $groupId = $_.Id
+                        $groupName = $_.DisplayName
+                        
+                        # Collect group members
+                        $membersList = @()
+                        try {
+                            $members = Get-MgGroupMember -GroupId $groupId -All
+                            $membersList = @($members | ForEach-Object {
+                                $odataType = $_.AdditionalProperties['@odata.type']
+                                $memberType = switch ($odataType) {
+                                    '#microsoft.graph.user' { 'user' }
+                                    '#microsoft.graph.group' { 'group' }
+                                    '#microsoft.graph.servicePrincipal' { 'servicePrincipal' }
+                                    '#microsoft.graph.device' { 'device' }
+                                    default { 'unknown' }
+                                }
+                                [ordered]@{
+                                    id = $_.Id
+                                    displayName = $_.AdditionalProperties['displayName']
+                                    type = $memberType
+                                }
+                            })
+                        }
+                        catch {
+                            Write-Verbose "Could not get members for group $groupName`: $($_.Exception.Message)"
+                        }
+                        
                         [ordered]@{
-                            id = $_.Id
-                            displayName = $_.DisplayName
+                            id = $groupId
+                            displayName = $groupName
                             mail = $_.Mail
                             securityEnabled = $_.SecurityEnabled
                             groupTypes = $_.GroupTypes
+                            members = $membersList
+                            memberCount = $membersList.Count
                             type = 'group'
                         }
                     }
@@ -304,14 +336,58 @@ function Get-DirectoryObjects {
                         }
                     }
                 }
+                'Application' {
+                    # Enterprise Applications (App Registrations) - different from Service Principals
+                    $apps = Get-MgApplication -All -Select Id,DisplayName,AppId,SignInAudience,Tags,PublisherDomain,RequiredResourceAccess
+                    $objects = $apps | ForEach-Object {
+                        [ordered]@{
+                            id = $_.Id
+                            displayName = $_.DisplayName
+                            appId = $_.AppId
+                            signInAudience = $_.SignInAudience
+                            tags = $_.Tags
+                            publisherDomain = $_.PublisherDomain
+                            requiredResourceAccessCount = @($_.RequiredResourceAccess).Count
+                            type = 'application'
+                        }
+                    }
+                }
                 'Role' {
                     $roles = Get-MgDirectoryRole -All
                     $objects = $roles | ForEach-Object {
+                        $roleId = $_.Id
+                        $roleName = $_.DisplayName
+                        
+                        # Collect role members
+                        $membersList = @()
+                        try {
+                            $members = Get-MgDirectoryRoleMember -DirectoryRoleId $roleId -All
+                            $membersList = @($members | ForEach-Object {
+                                $odataType = $_.AdditionalProperties['@odata.type']
+                                $memberType = switch ($odataType) {
+                                    '#microsoft.graph.user' { 'user' }
+                                    '#microsoft.graph.group' { 'group' }
+                                    '#microsoft.graph.servicePrincipal' { 'servicePrincipal' }
+                                    default { 'unknown' }
+                                }
+                                [ordered]@{
+                                    id = $_.Id
+                                    displayName = $_.AdditionalProperties['displayName']
+                                    type = $memberType
+                                }
+                            })
+                        }
+                        catch {
+                            Write-Verbose "Could not get members for role $roleName`: $($_.Exception.Message)"
+                        }
+                        
                         [ordered]@{
                             id = $_.RoleTemplateId
-                            roleId = $_.Id
-                            displayName = $_.DisplayName
+                            roleId = $roleId
+                            displayName = $roleName
                             description = $_.Description
+                            members = $membersList
+                            memberCount = $membersList.Count
                             type = 'role'
                         }
                     }
@@ -337,12 +413,23 @@ function Get-DirectoryObjects {
 
         $counts[$type.ToLower()] = @($objects).Count
         
+        # For groups, optionally resolve nested memberships
+        if ($type -eq 'Group' -and $ResolveNestedGroups) {
+            $objects = Add-NestedGroupInfo -Groups $objects
+        }
+        
         $filePath = Join-Path -Path $entitiesPath -ChildPath "$($type.ToLower())s.json"
-        $objects | ConvertTo-Json -Depth 10 | Out-File -FilePath $filePath -Encoding utf8
+        $objects | ConvertTo-Json -Depth 20 | Out-File -FilePath $filePath -Encoding utf8
         
         Write-Host "[CAGapCollector] Saved $(@($objects).Count) $type objects" -ForegroundColor Green
     }
 
+    # Add collection metadata
+    $counts['groupMembersCollected'] = $typesToCollect -contains 'Group'
+    $counts['roleMembersCollected'] = $typesToCollect -contains 'Role'
+    $counts['nestedGroupsResolved'] = $ResolveNestedGroups.IsPresent
+    $counts['collectedAt'] = (Get-Date).ToString('o')
+    
     # Save counts
     $countsPath = Join-Path -Path $entitiesPath -ChildPath 'counts.json'
     $counts | ConvertTo-Json | Out-File -FilePath $countsPath -Encoding utf8

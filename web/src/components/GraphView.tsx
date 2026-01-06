@@ -21,6 +21,7 @@ interface GraphViewProps {
   graph: GraphData
   selectedPolicyIds: Set<string>
   expandMembership?: boolean
+  onNodeClick?: (nodeId: string, nodeType: string, nodeLabel: string) => void
 }
 
 const NODE_WIDTH = 180
@@ -140,7 +141,7 @@ function buildPath(points: { x: number; y: number }[]) {
   return `M ${p0.x},${p0.y} L ${pLast.x},${pLast.y}`
 }
 
-export function GraphView({ graph, selectedPolicyIds, expandMembership = false }: GraphViewProps) {
+export function GraphView({ graph, selectedPolicyIds, expandMembership = false, onNodeClick }: GraphViewProps) {
   // Normalize legacy keyword edges/nodes to domain-specific ones at render time
   const normalizedGraph: GraphData = useMemo(() => {
     const nodeMap = new Map<string, GraphNode>()
@@ -672,15 +673,25 @@ export function GraphView({ graph, selectedPolicyIds, expandMembership = false }
               })
             }
 
+            // Check if this node type should trigger the member modal
+            const isClickableForMembers = node.type === 'group' || node.type === 'role'
+
             return (
               <g
                 key={node.id}
-                className={`graph__node graph__node--${node.type} ${isSelected ? 'graph__node--selected' : ''}`}
+                className={`graph__node graph__node--${node.type} ${isSelected ? 'graph__node--selected' : ''} ${isClickableForMembers ? 'graph__node--clickable' : ''}`}
                 transform={`translate(${node.x - dims.width / 2}, ${node.y - dims.height / 2})`}
-                style={{ cursor: 'grab' }}
+                style={{ cursor: isClickableForMembers ? 'pointer' : 'grab' }}
                 onPointerDown={(e) => onNodePointerDown(e, node.id)}
                 onPointerMove={(e) => onNodePointerMove(e, node.id)}
                 onPointerUp={onNodePointerUp}
+                onClick={(e) => {
+                  // Only trigger click if we haven't been dragging
+                  if (!dragging?.id && isClickableForMembers && onNodeClick) {
+                    e.stopPropagation()
+                    onNodeClick(node.id, node.type, node.label)
+                  }
+                }}
               >
                 <rect width={dims.width} height={dims.height} rx={16} ry={16} stroke={baseColor} />
                 <text x={18} y={28} className="graph__node-type">

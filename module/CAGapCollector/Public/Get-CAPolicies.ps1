@@ -121,7 +121,7 @@ function Get-CAPolicies {
         Write-Progress -Activity 'Collecting Conditional Access policies' -Status "$policyIndex of $totalPolicies" -PercentComplete $percent
 
         if (($policyIndex % 5) -eq 0 -or $policyIndex -eq 1 -or $policyIndex -eq $totalPolicies) {
-            Write-Verbose "Processing policy $policyIndex/$totalPolicies: $($policy.DisplayName)"
+            Write-Verbose ("Processing policy {0}/{1}: {2}" -f $policyIndex, $totalPolicies, $policy.DisplayName)
         }
 
         $policySummary = [ordered]@{
@@ -211,20 +211,23 @@ function Get-CAPolicies {
             applications = [ordered]@{
                 include = $includeApplications
                 exclude = $excludeApplications
-                includeUserActions = To-Array $appsCondition.IncludeUserActions
-                excludeUserActions = To-Array $appsCondition.ExcludeUserActions
-                includeAuthenticationContextClassReferences = To-Array $appsCondition.IncludeAuthenticationContextClassReferences
+                includeUserActions = if ($appsCondition -and $appsCondition.PSObject.Properties['IncludeUserActions']) { To-Array $appsCondition.IncludeUserActions } else { @() }
+                excludeUserActions = if ($appsCondition -and $appsCondition.PSObject.Properties['ExcludeUserActions']) { To-Array $appsCondition.ExcludeUserActions } else { @() }
+                includeAuthenticationContextClassReferences = if ($appsCondition -and $appsCondition.PSObject.Properties['IncludeAuthenticationContextClassReferences']) { To-Array $appsCondition.IncludeAuthenticationContextClassReferences } else { @() }
             }
         }
 
+        # Safe property access for conditions
+        $platforms = if ($conditions -and $conditions.PSObject.Properties['Platforms']) { $conditions.Platforms } else { $null }
+        
         $policySummary.conditions = [ordered]@{
-            clientAppTypes = To-Array $conditions.ClientAppTypes
+            clientAppTypes = if ($conditions) { To-Array $conditions.ClientAppTypes } else { @() }
             platforms = [ordered]@{
-                include = To-Array $conditions.Platforms.IncludePlatforms
-                exclude = To-Array $conditions.Platforms.ExcludePlatforms
+                include = if ($platforms) { To-Array $platforms.IncludePlatforms } else { @() }
+                exclude = if ($platforms) { To-Array $platforms.ExcludePlatforms } else { @() }
             }
-            signInRiskLevels = To-Array $conditions.SignInRiskLevels
-            userRiskLevels = To-Array $conditions.UserRiskLevels
+            signInRiskLevels = if ($conditions) { To-Array $conditions.SignInRiskLevels } else { @() }
+            userRiskLevels = if ($conditions) { To-Array $conditions.UserRiskLevels } else { @() }
             locations = [ordered]@{
                 include = $includeLocations
                 exclude = $excludeLocations

@@ -32,13 +32,14 @@ $script:RoleTemplateCache = @{}
 # Import private functions
 $privatePath = Join-Path -Path $PSScriptRoot -ChildPath 'Private'
 if (Test-Path -Path $privatePath) {
-    Get-ChildItem -Path $privatePath -Filter '*.ps1' -Recurse | ForEach-Object {
+    $privateFiles = @(Get-ChildItem -Path $privatePath -Filter '*.ps1' -File -ErrorAction SilentlyContinue)
+    foreach ($file in $privateFiles) {
         try {
-            . $_.FullName
-            Write-Verbose "Imported private function: $($_.BaseName)"
+            . $file.FullName
+            Write-Verbose "Imported private function: $($file.BaseName)"
         }
         catch {
-            Write-Warning "Failed to import $($_.FullName): $_"
+            Write-Warning "Failed to import $($file.FullName): $_"
         }
     }
 }
@@ -46,13 +47,14 @@ if (Test-Path -Path $privatePath) {
 # Import public functions
 $publicPath = Join-Path -Path $PSScriptRoot -ChildPath 'Public'
 if (Test-Path -Path $publicPath) {
-    Get-ChildItem -Path $publicPath -Filter '*.ps1' -Recurse | ForEach-Object {
+    $publicFiles = @(Get-ChildItem -Path $publicPath -Filter '*.ps1' -File -ErrorAction SilentlyContinue)
+    foreach ($file in $publicFiles) {
         try {
-            . $_.FullName
-            Write-Verbose "Imported public function: $($_.BaseName)"
+            . $file.FullName
+            Write-Verbose "Imported public function: $($file.BaseName)"
         }
         catch {
-            Write-Warning "Failed to import $($_.FullName): $_"
+            Write-Warning "Failed to import $($file.FullName): $_"
         }
     }
 }
@@ -79,17 +81,21 @@ $MyInvocation.MyCommand.ScriptBlock.Module.OnRemove = {
     }
 }
 
-# Export module member
+# Export module member - Public functions from Public/*.ps1
 Export-ModuleMember -Function @(
+    # Connection management (Disconnect-CAGapGraph.ps1)
     'Connect-CAGapGraph',
     'Disconnect-CAGapGraph',
     'Test-CAGapConnection',
-    'Get-CAPolicies',
-    'Get-DirectoryObjects',
-    'Export-CAGraph',
-    'Export-OpenGraph',
+    'Get-CAGapVersion',
+    # Collection functions
+    'Get-CAPolicies',          # Get-CAPolicies.ps1
+    'Get-DirectoryObjects',    # Get-CAAnalysis.ps1
+    # Export functions
+    'Export-CAGraph',          # Export-CAGraph.ps1
+    'Export-OpenGraph',        # Export-OpenGraph.ps1
+    # Analysis functions (Get-CAAnalysis.ps1)
     'Get-CAPolicyCoverage',
-    'Get-CAExposures',
-    'Get-CAGapVersion'
+    'Get-CAExposures'
 )
 

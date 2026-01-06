@@ -1,29 +1,82 @@
 import { useMemo, useState, useEffect } from 'react'
-import type { GraphData } from '../types/graph'
-import { calculateCoverageByGrantControl, calculateCoverageByCondition, type GrantControlCoverage } from '../utils/coverage'
+import type { GraphData, GraphNode } from '../types/graph'
+import { calculateCoverageByGrantControl, type CoverageResult } from '../utils/coverage'
 import { GRANT_CONTROL_LABELS } from '../utils/policyGrouping'
 import { buildObjectsIndexWithCountsSync } from '../utils/objectsIndexWithCounts'
-import { ExclusionsPanel } from './ExclusionsPanel'
-import { PolicyOrganizer } from './PolicyOrganizer'
+import { MemberModal, type Member } from './MemberModal'
+import { PolicyFlowDiagram } from './PolicyFlowDiagram'
 import './GapBuilderTab.css'
 
 type GapBuilderProps = {
   graphData: GraphData
   selectedPolicyIds: Set<string>
-  policySummaries: Array<{ id: string; label: string; stateKey: string; stateLabel: string }>
+  rawPolicies?: any[]
 }
 
-export function GapBuilderTab({ graphData, selectedPolicyIds, policySummaries }: GapBuilderProps) {
-  const [viewMode, setViewMode] = useState<'grantControl' | 'condition'>('grantControl')
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
-  const [counts, setCounts] = useState<any>(null)
+// Organized control and condition categories based on CA documentation
+const GRANT_CONTROLS = [
+  { id: 'mfa', label: 'MFA Required', icon: '🔐', description: 'Require multi-factor authentication' },
+  { id: 'block', label: 'Block Access', icon: '🚫', description: 'Block access entirely' },
+  { id: 'compliantDevice', label: 'Compliant Device', icon: '📱', description: 'Require Intune-compliant device' },
+  { id: 'domainJoinedDevice', label: 'Hybrid AD Join', icon: '💻', description: 'Require hybrid Azure AD joined device' },
+  { id: 'approvedApplication', label: 'Approved App', icon: '✅', description: 'Require approved client application' },
+  { id: 'compliantApplication', label: 'App Protection', icon: '🛡️', description: 'Require app protection policy' },
+  { id: 'passwordChange', label: 'Password Change', icon: '🔑', description: 'Require password change' },
+  { id: 'authenticationStrength', label: 'Auth Strength', icon: '⚡', description: 'Require specific authentication strength' },
+]
 
-  // Load counts.json on mount
+const SESSION_CONTROLS = [
+  { id: 'signInFrequency', label: 'Sign-in Frequency', icon: '⏱️', description: 'Force re-authentication' },
+  { id: 'persistentBrowserSession', label: 'Persistent Browser', icon: '🌐', description: 'Control browser persistence' },
+  { id: 'continuousAccessEvaluation', label: 'CAE Enforcement', icon: '🔄', description: 'Continuous access evaluation' },
+  { id: 'secureSignInSession', label: 'Token Protection', icon: '🔒', description: 'Require token binding' },
+]
+
+const CONDITION_CATEGORIES = [
+  { id: 'userRisk', label: 'User Risk', icon: '⚠️', description: 'Based on user risk level' },
+  { id: 'signInRisk', label: 'Sign-in Risk', icon: '🎯', description: 'Based on sign-in risk level' },
+  { id: 'locations', label: 'Locations', icon: '📍', description: 'Named or trusted locations' },
+  { id: 'platforms', label: 'Device Platforms', icon: '🖥️', description: 'Target specific OS platforms' },
+  { id: 'clientApps', label: 'Client Apps', icon: '📲', description: 'Browser, mobile, desktop apps' },
+  { id: 'deviceFilter', label: 'Device Filter', icon: '🔧', description: 'Custom device attribute filter' },
+]
+
+export function GapBuilderTab({ graphData, selectedPolicyIds, rawPolicies }: GapBuilderProps) {
+  const [viewTab, setViewTab] = useState<'users' | 'apps' | 'controls' | 'conditions' | 'networks' | 'flow'>('users')
+  const [counts, setCounts] = useState<Record<string, number> | null>(null)
+  const [groupsData, setGroupsData] = useState<any[]>([])
+  const [rolesData, setRolesData] = useState<any[]>([])
+  const [selectedFlowPolicy, setSelectedFlowPolicy] = useState<any>(null)
+  const [showFlowPanel, setShowFlowPanel] = useState(false)
+  
+  // Modal state
+  const [memberModalOpen, setMemberModalOpen] = useState(false)
+  const [selectedEntity, setSelectedEntity] = useState<{
+    id: string
+    type: 'group' | 'role'
+    name: string
+    members: Member[]
+    nestedMembers?: Member[]
+    nestedGroups?: Array<{ id: string; displayName: string; depth: number }>
+    totalMemberCount?: number
+  } | null>(null)
+
+  // Load counts.json and groups.json on mount
   useEffect(() => {
     fetch('/entities/counts.json', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((c) => setCounts(c))
       .catch(() => setCounts(null))
+    
+    fetch('/entities/groups.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((g) => setGroupsData(g))
+      .catch(() => setGroupsData([]))
+    
+    fetch('/entities/roles.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((r) => setRolesData(r))
+      .catch(() => setRolesData([]))
   }, [])
 
   // Build index with actual counts
@@ -31,30 +84,183 @@ export function GapBuilderTab({ graphData, selectedPolicyIds, policySummaries }:
     return buildObjectsIndexWithCountsSync(graphData, null, counts)
   }, [graphData, counts])
 
-  // Calculate coverage by grant control or condition
-  const coverageResult = useMemo(() => {
+  // Get all policies
+  const allPolicies = useMemo(() => {
+    return graphData.nodes.filter(n => n.type === 'policy')
+  }, [graphData])
+
+  // Calculate coverage
+  const coverageResult = useMemo((): CoverageResult | null => {
     if (selectedPolicyIds.size === 0) return null
-    if (viewMode === 'condition') {
-      // For condition view, return a compatible structure
-      const byCondition = calculateCoverageByCondition(graphData, selectedPolicyIds, indexWithCounts)
-      // Calculate overall
-      return {
-        byGrantControl: byCondition, // Reuse the same structure
-        overall: byCondition.get('All Conditions') || {
-          users: { covered: new Set(), excluded: new Set(), uncovered: new Set(), total: 0, actualTotal: indexWithCounts.totals.user, coveredCount: 0, uncoveredCount: 0 },
-          applications: { covered: new Set(), excluded: new Set(), uncovered: new Set(), total: 0, actualTotal: indexWithCounts.totals.servicePrincipal, coveredCount: 0, uncoveredCount: 0 },
-          networks: { includedLocations: new Set(), excludedLocations: new Set(), isGlobal: false, note: 'No conditions' }
+    return calculateCoverageByGrantControl(graphData, selectedPolicyIds, indexWithCounts)
+  }, [graphData, selectedPolicyIds, indexWithCounts])
+
+  // Analyze policies for controls, conditions, and networks
+  const policyAnalysis = useMemo(() => {
+    const selectedPolicies = allPolicies.filter(p => selectedPolicyIds.has(p.id))
+    
+    const controlCounts: Record<string, { count: number; policies: GraphNode[] }> = {}
+    const conditionCounts: Record<string, { count: number; policies: GraphNode[] }> = {}
+    const sessionControlCounts: Record<string, { count: number; policies: GraphNode[] }> = {}
+    
+    // Network/location analysis
+    const networkAnalysis: Array<{
+      policy: GraphNode
+      action: string
+      includeLocations: string[]
+      excludeLocations: string[]
+      includeKeywords: string[]
+      excludeKeywords: string[]
+      summary: string
+    }> = []
+    
+    // Initialize all controls
+    GRANT_CONTROLS.forEach(c => { controlCounts[c.id] = { count: 0, policies: [] } })
+    SESSION_CONTROLS.forEach(c => { sessionControlCounts[c.id] = { count: 0, policies: [] } })
+    CONDITION_CATEGORIES.forEach(c => { conditionCounts[c.id] = { count: 0, policies: [] } })
+    
+    for (const policy of selectedPolicies) {
+      const props = policy.properties || {}
+      
+      // Check grant controls
+      const grantControls = Array.isArray(props.grantControls) ? props.grantControls : []
+      for (const gc of grantControls) {
+        const key = String(gc).toLowerCase()
+        if (controlCounts[key]) {
+          controlCounts[key].count++
+          controlCounts[key].policies.push(policy)
+        }
+      }
+      
+      // Check for authentication strength
+      const accessControls = props.accessControls as any
+      if (accessControls?.grant?.authenticationStrength) {
+        controlCounts['authenticationStrength'].count++
+        controlCounts['authenticationStrength'].policies.push(policy)
+      }
+      
+      // Determine the action (block, mfa, etc.)
+      const builtInControls = accessControls?.grant?.builtInControls
+      let action = 'allow'
+      if (builtInControls === 'block') action = 'block'
+      else if (builtInControls === 'mfa') action = 'require MFA'
+      else if (typeof builtInControls === 'string' && builtInControls) action = builtInControls
+      
+      // Check conditions
+      const conditions = props.conditions as any
+      if (conditions) {
+        if (conditions.userRiskLevels?.length > 0) {
+          conditionCounts['userRisk'].count++
+          conditionCounts['userRisk'].policies.push(policy)
+        }
+        if (conditions.signInRiskLevels?.length > 0) {
+          conditionCounts['signInRisk'].count++
+          conditionCounts['signInRisk'].policies.push(policy)
+        }
+        if (conditions.locations?.include?.entities?.length > 0 || 
+            conditions.locations?.exclude?.entities?.length > 0 ||
+            conditions.locations?.include?.keywords?.length > 0 ||
+            conditions.locations?.exclude?.keywords?.length > 0) {
+          conditionCounts['locations'].count++
+          conditionCounts['locations'].policies.push(policy)
+          
+          // Extract location details for network analysis
+          const includeEntities = conditions.locations?.include?.entities || []
+          const excludeEntities = conditions.locations?.exclude?.entities || []
+          const includeKw = conditions.locations?.include?.keywords || []
+          const excludeKw = conditions.locations?.exclude?.keywords || []
+          
+          const includeLocations = includeEntities.map((e: any) => e.displayName || e.id)
+          const excludeLocations = excludeEntities.map((e: any) => e.displayName || e.id)
+          
+          // Build summary
+          let summary = ''
+          const hasAllInclude = includeKw.some((k: string) => k.toLowerCase() === 'all')
+          
+          if (action === 'block') {
+            if (includeLocations.length > 0) {
+              summary = `🚫 BLOCK access from: ${includeLocations.join(', ')}`
+            } else if (hasAllInclude && excludeLocations.length > 0) {
+              summary = `🚫 BLOCK access from everywhere EXCEPT: ${excludeLocations.join(', ')}`
+            } else if (hasAllInclude) {
+              summary = `🚫 BLOCK access from all locations`
+            }
+          } else {
+            if (hasAllInclude && excludeLocations.length > 0) {
+              summary = `✓ ${action} from everywhere EXCEPT: ${excludeLocations.join(', ')} (exempt from control)`
+            } else if (hasAllInclude) {
+              summary = `✓ ${action} from all locations`
+            } else if (includeLocations.length > 0) {
+              summary = `✓ ${action} only from: ${includeLocations.join(', ')}`
+            }
+          }
+          
+          networkAnalysis.push({
+            policy,
+            action,
+            includeLocations,
+            excludeLocations,
+            includeKeywords: includeKw,
+            excludeKeywords: excludeKw,
+            summary
+          })
+        }
+        if (conditions.platforms?.includePlatforms?.length > 0 || conditions.platforms?.excludePlatforms?.length > 0) {
+          conditionCounts['platforms'].count++
+          conditionCounts['platforms'].policies.push(policy)
+        }
+        if (conditions.clientAppTypes?.length > 0 && !conditions.clientAppTypes.includes('all')) {
+          conditionCounts['clientApps'].count++
+          conditionCounts['clientApps'].policies.push(policy)
+        }
+        if (conditions.devices?.deviceFilter) {
+          conditionCounts['deviceFilter'].count++
+          conditionCounts['deviceFilter'].policies.push(policy)
+        }
+      }
+      
+      // Check session controls
+      const sessionControls = accessControls?.session || (props as any).sessionControls
+      if (sessionControls) {
+        if (sessionControls.signInFrequency?.isEnabled) {
+          sessionControlCounts['signInFrequency'].count++
+          sessionControlCounts['signInFrequency'].policies.push(policy)
+        }
+        if (sessionControls.persistentBrowser?.isEnabled !== undefined) {
+          sessionControlCounts['persistentBrowserSession'].count++
+          sessionControlCounts['persistentBrowserSession'].policies.push(policy)
+        }
+        if (sessionControls.continuousAccessEvaluation?.mode) {
+          sessionControlCounts['continuousAccessEvaluation'].count++
+          sessionControlCounts['continuousAccessEvaluation'].policies.push(policy)
+        }
+        if (sessionControls.secureSignInSession?.isEnabled) {
+          sessionControlCounts['secureSignInSession'].count++
+          sessionControlCounts['secureSignInSession'].policies.push(policy)
         }
       }
     }
-    return calculateCoverageByGrantControl(graphData, selectedPolicyIds, indexWithCounts)
-  }, [graphData, selectedPolicyIds, indexWithCounts, viewMode])
+    
+    return { controlCounts, conditionCounts, sessionControlCounts, networkAnalysis }
+  }, [allPolicies, selectedPolicyIds])
 
-  const toggleGroup = (key: string) => {
-    const next = new Set(expandedGroups)
-    if (next.has(key)) next.delete(key)
-    else next.add(key)
-    setExpandedGroups(next)
+  // Handle opening member modal
+  const openMemberModal = (entityId: string, entityType: 'group' | 'role', entityName: string) => {
+    const source = entityType === 'group' ? groupsData : rolesData
+    const entity = source.find((e: any) => e.id === entityId)
+    
+    if (entity) {
+      setSelectedEntity({
+        id: entityId,
+        type: entityType,
+        name: entityName || entity.displayName,
+        members: entity.members || [],
+        nestedMembers: entity.nestedMembers || [],
+        nestedGroups: entity.nestedGroups || [],
+        totalMemberCount: entity.totalMemberCount
+      })
+      setMemberModalOpen(true)
+    }
   }
 
   const formatPercent = (covered: number, total: number) => {
@@ -66,38 +272,24 @@ export function GapBuilderTab({ graphData, selectedPolicyIds, policySummaries }:
     if (!coverageResult) return
 
     const rows: string[][] = [
-      ['Grant Control', 'Policies', 'Users Covered', 'Users Uncovered', 'Users Excluded', 'Users Total', 'Users %', 'Apps Covered', 'Apps Uncovered', 'Apps Excluded', 'Apps Total', 'Apps %', 'Network Note']
+      ['Grant Control', 'Policies', 'Users Covered', 'Users Total', 'Users %', 'Apps Covered', 'Apps Total', 'Apps %']
     ]
 
     for (const [gc, cov] of coverageResult.byGrantControl.entries()) {
-      // Use coveredCount/uncoveredCount if available (when "All" is used), otherwise use Set sizes
-      const usersCovered = cov.users.coveredCount !== undefined ? cov.users.coveredCount : cov.users.covered.size
-      const usersUncovered = cov.users.uncoveredCount !== undefined ? cov.users.uncoveredCount : cov.users.uncovered.size
-      const usersExcluded = cov.users.excluded.size
+      const usersCovered = cov.users.coveredCount ?? cov.users.covered.size
       const usersTotal = cov.users.actualTotal || cov.users.total
-      
-      const appsCovered = cov.applications.coveredCount !== undefined ? cov.applications.coveredCount : cov.applications.covered.size
-      const appsUncovered = cov.applications.uncoveredCount !== undefined ? cov.applications.uncoveredCount : cov.applications.uncovered.size
-      const appsExcluded = cov.applications.excluded.size
+      const appsCovered = cov.applications.coveredCount ?? cov.applications.covered.size
       const appsTotal = cov.applications.actualTotal || cov.applications.total
-      
-      const userPct = formatPercent(usersCovered, usersTotal)
-      const appPct = formatPercent(appsCovered, appsTotal)
       
       rows.push([
         GRANT_CONTROL_LABELS[gc] || gc,
         String(cov.policyCount),
         String(usersCovered),
-        String(usersUncovered),
-        String(usersExcluded),
         String(usersTotal),
-        userPct,
+        formatPercent(usersCovered, usersTotal),
         String(appsCovered),
-        String(appsUncovered),
-        String(appsExcluded),
         String(appsTotal),
-        appPct,
-        cov.networks.note
+        formatPercent(appsCovered, appsTotal),
       ])
     }
 
@@ -107,220 +299,531 @@ export function GapBuilderTab({ graphData, selectedPolicyIds, policySummaries }:
     const a = document.createElement('a')
     a.href = url
     a.download = `gap-analysis-${new Date().toISOString().split('T')[0]}.csv`
-    a.style.display = 'none'
-    document.body.appendChild(a)
     a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 100)
+    URL.revokeObjectURL(url)
   }
 
+  // Get totals for display
+  const userTotal = counts?.user ?? indexWithCounts.totals.user ?? 0
+  const appTotal = counts?.serviceprincipal ?? counts?.application ?? indexWithCounts.totals.servicePrincipal ?? 0
+  const groupTotal = counts?.group ?? 0
+
   return (
-    <div className="gap-builder">
-      <div className="gap-builder__main">
-        <div className="gap-builder__header">
-          <h2>Gap Analysis</h2>
-          <p className="gap-builder__hint">
-            Select policies from the sidebar and use filters to analyze coverage across users, applications, and networks.
-          </p>
+    <div className="gap-builder-v2">
+      {/* Summary Stats Bar */}
+      <div className="gap-builder-v2__stats-bar">
+        <div className="gap-builder-v2__stat">
+          <span className="gap-builder-v2__stat-value">{selectedPolicyIds.size}</span>
+          <span className="gap-builder-v2__stat-label">Policies Selected</span>
         </div>
-
-        <div className="gap-builder__controls">
-          <div className="gap-builder__control-group">
-            <label className="gap-builder__control-label">View Mode:</label>
-            <div className="gap-builder__toggle">
-              <button
-                className={`gap-builder__toggle-btn ${viewMode === 'grantControl' ? 'active' : ''}`}
-                onClick={() => setViewMode('grantControl')}
-              >
-                By Grant Control
-              </button>
-              <button
-                className={`gap-builder__toggle-btn ${viewMode === 'condition' ? 'active' : ''}`}
-                onClick={() => setViewMode('condition')}
-              >
-                By Condition
-              </button>
+        <div className="gap-builder-v2__stat">
+          <span className="gap-builder-v2__stat-value">{userTotal.toLocaleString()}</span>
+          <span className="gap-builder-v2__stat-label">Total Users</span>
+        </div>
+        <div className="gap-builder-v2__stat">
+          <span className="gap-builder-v2__stat-value">{appTotal.toLocaleString()}</span>
+          <span className="gap-builder-v2__stat-label">Total Apps</span>
             </div>
+        <div className="gap-builder-v2__stat">
+          <span className="gap-builder-v2__stat-value">{groupTotal.toLocaleString()}</span>
+          <span className="gap-builder-v2__stat-label">Total Groups</span>
           </div>
-
           {coverageResult && (
-            <button className="gap-builder__export-btn" onClick={exportCoverage}>
-              Export CSV
+          <button className="gap-builder-v2__export-btn" onClick={exportCoverage}>
+            📥 Export CSV
             </button>
           )}
         </div>
 
-        <div className="gap-builder__content">
-        {!coverageResult ? (
-          <div className="gap-builder__empty">
-            <p>Select at least one policy from the left sidebar to compute coverage.</p>
-            <p className="gap-builder__empty-hint">
-              Policies: {selectedPolicyIds.size} selected
-            </p>
+      {/* View Tabs - Reordered with Object/Resource Coverage first */}
+      <div className="gap-builder-v2__tabs">
+        <button 
+          className={`gap-builder-v2__tab ${viewTab === 'users' ? 'active' : ''}`}
+          onClick={() => setViewTab('users')}
+        >
+          Object Coverage
+        </button>
+        <button 
+          className={`gap-builder-v2__tab ${viewTab === 'apps' ? 'active' : ''}`}
+          onClick={() => setViewTab('apps')}
+        >
+          Resource Coverage
+        </button>
+        <button 
+          className={`gap-builder-v2__tab ${viewTab === 'networks' ? 'active' : ''}`}
+          onClick={() => setViewTab('networks')}
+        >
+          Networks & Locations
+        </button>
+        <button 
+          className={`gap-builder-v2__tab ${viewTab === 'flow' ? 'active' : ''}`}
+          onClick={() => setViewTab('flow')}
+        >
+          🔀 Policy Flow
+        </button>
+        <button 
+          className={`gap-builder-v2__tab ${viewTab === 'controls' ? 'active' : ''}`}
+          onClick={() => setViewTab('controls')}
+        >
+          Grant Controls
+        </button>
+        <button 
+          className={`gap-builder-v2__tab ${viewTab === 'conditions' ? 'active' : ''}`}
+          onClick={() => setViewTab('conditions')}
+        >
+          Conditions
+        </button>
+        
+        {/* Flow Panel Toggle */}
+        <button 
+          className={`gap-builder-v2__flow-toggle ${showFlowPanel ? 'active' : ''}`}
+          onClick={() => setShowFlowPanel(!showFlowPanel)}
+          title="Toggle Policy Flow Panel"
+        >
+          📊
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="gap-builder-v2__content">
+        {selectedPolicyIds.size === 0 ? (
+          <div className="gap-builder-v2__empty">
+            <p>Toggle policies above to analyze coverage gaps</p>
           </div>
         ) : (
-          <div className="gap-builder__results">
-            {/* Overall Summary */}
-            <div className="gap-builder__overall">
-              <h3>Overall Coverage ({selectedPolicyIds.size} policies)</h3>
-              <div className="gap-builder__overall-grid">
-                <CoverageCard
-                  title="Users"
+          <>
+            {viewTab === 'users' && coverageResult && (
+              <div className="gap-builder-v2__coverage-detail">
+                <CoverageDetailCard
+                  title="Object Coverage (Users, Groups, Roles)"
                   coverage={coverageResult.overall.users}
+                  entityType="user"
+                  graphData={graphData}
+                  selectedPolicyIds={selectedPolicyIds}
+                  onGroupClick={(id, name) => openMemberModal(id, 'group', name)}
+                  onRoleClick={(id, name) => openMemberModal(id, 'role', name)}
                 />
-                <CoverageCard
-                  title="Applications"
+              </div>
+            )}
+
+            {viewTab === 'apps' && coverageResult && (
+              <div className="gap-builder-v2__coverage-detail">
+                <CoverageDetailCard
+                  title="Resource Coverage (Applications & Services)"
                   coverage={coverageResult.overall.applications}
+                  entityType="app"
+                  graphData={graphData}
+                  selectedPolicyIds={selectedPolicyIds}
                 />
-                <div className="coverage-card">
-                  <div className="coverage-card__header">
-                    <strong>Networks</strong>
+              </div>
+            )}
+
+            {viewTab === 'networks' && (
+              <div className="gap-builder-v2__networks-detail">
+                <h3>📍 Network & Location Conditions</h3>
+                
+                {policyAnalysis.networkAnalysis.length === 0 ? (
+                  <div className="gap-builder-v2__no-networks">
+                    <p>No location-based conditions in selected policies</p>
+                    <p className="gap-builder-v2__no-networks-hint">
+                      Location conditions allow you to restrict or allow access based on IP ranges, countries, or trusted networks.
+                    </p>
                   </div>
-                  <div className="coverage-card__network-note">{coverageResult.overall.networks.note}</div>
+                ) : (
+                  <div className="gap-builder-v2__network-cards">
+                    {policyAnalysis.networkAnalysis.map((net, idx) => (
+                      <div key={idx} className={`gap-builder-v2__network-card ${net.action === 'block' ? 'block' : 'allow'}`}>
+                        <div className="gap-builder-v2__network-card-header">
+                          <span className="gap-builder-v2__network-policy-name">
+                            {net.policy.label || net.policy.id}
+                          </span>
+                          <span className={`gap-builder-v2__network-action gap-builder-v2__network-action--${net.action === 'block' ? 'block' : 'allow'}`}>
+                            {net.action.toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        <div className="gap-builder-v2__network-summary">
+                          {net.summary}
+                        </div>
+                        
+                        <div className="gap-builder-v2__network-details">
+                          {net.includeKeywords.length > 0 && (
+                            <div className="gap-builder-v2__network-row">
+                              <span className="gap-builder-v2__network-label">Include Keywords:</span>
+                              <div className="gap-builder-v2__network-pills">
+                                {net.includeKeywords.map((kw, i) => (
+                                  <span key={i} className="gap-builder-v2__network-pill include">
+                                    {kw}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {net.includeLocations.length > 0 && (
+                            <div className="gap-builder-v2__network-row">
+                              <span className="gap-builder-v2__network-label">
+                                {net.action === 'block' ? '🚫 Blocked From:' : '✓ Required From:'}
+                              </span>
+                              <div className="gap-builder-v2__network-pills">
+                                {net.includeLocations.map((loc, i) => (
+                                  <span key={i} className={`gap-builder-v2__network-pill ${net.action === 'block' ? 'blocked' : 'included'}`}>
+                                    {loc}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {net.excludeLocations.length > 0 && (
+                            <div className="gap-builder-v2__network-row">
+                              <span className="gap-builder-v2__network-label">
+                                {net.action === 'block' ? '✓ Allowed From:' : '⚠️ Exempt (no control):'}
+                              </span>
+                              <div className="gap-builder-v2__network-pills">
+                                {net.excludeLocations.map((loc, i) => (
+                                  <span key={i} className="gap-builder-v2__network-pill excluded">
+                                    {loc}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Network Coverage Summary */}
+                {coverageResult && (
+                  <div className="gap-builder-v2__network-summary-card">
+                    <h4>Overall Network Coverage</h4>
+                    <p>{coverageResult.overall.networks.note}</p>
+                    {coverageResult.overall.networks.isGlobal && (
+                      <div className="gap-builder-v2__network-global-badge">
+                        🌐 Policies apply globally (from all locations)
+                      </div>
+                    )}
+                    {coverageResult.overall.networks.includedLocations.size > 0 && (
+                      <div className="gap-builder-v2__network-stat">
+                        <strong>Named Locations Used:</strong> {coverageResult.overall.networks.includedLocations.size}
+                      </div>
+                    )}
                   {coverageResult.overall.networks.excludedLocations.size > 0 && (
-                    <div className="coverage-card__detail">
-                      Excluded Locations: {coverageResult.overall.networks.excludedLocations.size}
+                      <div className="gap-builder-v2__network-stat warning">
+                        <strong>Excluded Locations:</strong> {coverageResult.overall.networks.excludedLocations.size}
+                        <span className="gap-builder-v2__network-warning">
+                          ⚠️ Traffic from these locations may bypass controls
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {viewTab === 'controls' && (
+              <div className="gap-builder-v2__controls-grid">
+                <div className="gap-builder-v2__control-section">
+                  <h3>Grant Controls</h3>
+                  <div className="gap-builder-v2__control-cards">
+                    {GRANT_CONTROLS.map(control => {
+                      const data = policyAnalysis.controlCounts[control.id]
+                      const pct = selectedPolicyIds.size > 0 ? Math.round((data.count / selectedPolicyIds.size) * 100) : 0
+                      return (
+                        <div 
+                          key={control.id} 
+                          className={`gap-builder-v2__control-card ${data.count > 0 ? 'active' : ''}`}
+                        >
+                          <div className="gap-builder-v2__control-icon">{control.icon}</div>
+                          <div className="gap-builder-v2__control-info">
+                            <div className="gap-builder-v2__control-label">{control.label}</div>
+                            <div className="gap-builder-v2__control-count">
+                              {data.count} / {selectedPolicyIds.size} policies ({pct}%)
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                
+                <div className="gap-builder-v2__control-section">
+                  <h3>Session Controls</h3>
+                  <div className="gap-builder-v2__control-cards">
+                    {SESSION_CONTROLS.map(control => {
+                      const data = policyAnalysis.sessionControlCounts[control.id]
+                      const pct = selectedPolicyIds.size > 0 ? Math.round((data.count / selectedPolicyIds.size) * 100) : 0
+                      return (
+                        <div 
+                          key={control.id} 
+                          className={`gap-builder-v2__control-card session ${data.count > 0 ? 'active' : ''}`}
+                        >
+                          <div className="gap-builder-v2__control-icon">{control.icon}</div>
+                          <div className="gap-builder-v2__control-info">
+                            <div className="gap-builder-v2__control-label">{control.label}</div>
+                            <div className="gap-builder-v2__control-count">
+                              {data.count} / {selectedPolicyIds.size} policies ({pct}%)
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
                     </div>
                   )}
+
+            {viewTab === 'conditions' && (
+              <div className="gap-builder-v2__conditions-grid">
+                <h3>Policy Conditions</h3>
+                <div className="gap-builder-v2__control-cards">
+                  {CONDITION_CATEGORIES.map(condition => {
+                    const data = policyAnalysis.conditionCounts[condition.id]
+                    const pct = selectedPolicyIds.size > 0 ? Math.round((data.count / selectedPolicyIds.size) * 100) : 0
+                    return (
+                      <div 
+                        key={condition.id} 
+                        className={`gap-builder-v2__control-card condition ${data.count > 0 ? 'active' : ''}`}
+                      >
+                        <div className="gap-builder-v2__control-icon">{condition.icon}</div>
+                        <div className="gap-builder-v2__control-info">
+                          <div className="gap-builder-v2__control-label">{condition.label}</div>
+                          <div className="gap-builder-v2__control-count">
+                            {data.count} / {selectedPolicyIds.size} policies ({pct}%)
+                          </div>
+                          <div className="gap-builder-v2__control-desc">{condition.description}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
+            )}
+
+            {viewTab === 'flow' && (
+              <div className="gap-builder-v2__flow-view">
+                <div className="gap-builder-v2__flow-intro">
+                  <h3>🔀 Policy Decision Flows</h3>
+                  <p>Click a policy below to see its decision flow diagram - how the policy evaluates conditions and applies controls.</p>
             </div>
 
-            {/* Exclusions Summary */}
-            <ExclusionsPanel graphData={graphData} selectedPolicyIds={selectedPolicyIds} />
-
-            {/* By Grant Control */}
-            <div className="gap-builder__groups">
-              <h3>Coverage by {viewMode === 'condition' ? 'Condition' : 'Grant Control'}</h3>
-              {Array.from(coverageResult.byGrantControl.entries())
-                .sort((a, b) => b[1].policyCount - a[1].policyCount)
-                .map(([gc, cov]) => (
-                  <GrantControlGroup
-                    key={gc}
-                    grantControl={gc}
-                    coverage={cov}
-                    isExpanded={expandedGroups.has(gc)}
-                    onToggle={() => toggleGroup(gc)}
-                    policies={policySummaries.filter((p) => cov.policyIds.includes(p.id))}
-                    viewMode={viewMode}
-                  />
+                <div className="gap-builder-v2__flow-grid">
+                  <div className="gap-builder-v2__flow-policy-list">
+                    <h4>Selected Policies</h4>
+                    {rawPolicies?.filter(p => selectedPolicyIds.has(p.id)).map(policy => (
+                      <div 
+                        key={policy.id}
+                        className={`gap-builder-v2__flow-policy-item ${selectedFlowPolicy?.id === policy.id ? 'selected' : ''}`}
+                        onClick={() => setSelectedFlowPolicy(policy)}
+                      >
+                        <span className={`gap-builder-v2__flow-policy-state gap-builder-v2__flow-policy-state--${policy.state}`}>
+                          {policy.state === 'enabled' ? '🟢' : 
+                           policy.state === 'enabledForReportingButNotEnforced' ? '🟡' : '🔴'}
+                        </span>
+                        <span className="gap-builder-v2__flow-policy-name">
+                          {policy.displayName}
+                        </span>
+                        <span className="gap-builder-v2__flow-policy-action">
+                          {getGrantAction(policy)}
+                        </span>
+                      </div>
                 ))}
             </div>
+                  
+                  <div className="gap-builder-v2__flow-diagram-container">
+                    {selectedFlowPolicy ? (
+                      <PolicyFlowDiagram 
+                        policy={selectedFlowPolicy} 
+                        onClose={() => setSelectedFlowPolicy(null)}
+                      />
+                    ) : (
+                      <div className="gap-builder-v2__flow-empty">
+                        <p>👈 Select a policy to view its decision flow</p>
           </div>
         )}
         </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Right Sidebar with Policy Organization */}
-      {selectedPolicyIds.size > 0 && (
-        <div className="gap-builder__sidebar">
-          <PolicyOrganizer
-            policies={graphData.nodes.filter(n => n.type === 'policy' && selectedPolicyIds.has(n.id))}
-            onShowDetails={(policyId) => {
-              console.log('Show details for', policyId)
-            }}
+      {/* Collapsible Flow Panel */}
+      {showFlowPanel && selectedFlowPolicy && (
+        <div className="gap-builder-v2__flow-panel">
+          <PolicyFlowDiagram 
+            policy={selectedFlowPolicy} 
+            compact={true}
+            onClose={() => setShowFlowPanel(false)}
           />
         </div>
+      )}
+
+      {/* Member Modal */}
+      {selectedEntity && (
+        <MemberModal
+          isOpen={memberModalOpen}
+          onClose={() => setMemberModalOpen(false)}
+          entityId={selectedEntity.id}
+          entityType={selectedEntity.type}
+          entityName={selectedEntity.name}
+          members={selectedEntity.members}
+          nestedMembers={selectedEntity.nestedMembers}
+          nestedGroups={selectedEntity.nestedGroups}
+          totalMemberCount={selectedEntity.totalMemberCount}
+        />
       )}
     </div>
   )
 }
 
-// Coverage Card Component
-function CoverageCard({
+// Helper to get grant action from policy
+function getGrantAction(policy: any): string {
+  const builtInControls = policy.accessControls?.grant?.builtInControls
+  if (builtInControls === 'block') return '🚫 Block'
+  if (builtInControls === 'mfa') return '🔐 MFA'
+  if (Array.isArray(builtInControls)) {
+    if (builtInControls.includes('block')) return '🚫 Block'
+    if (builtInControls.includes('mfa')) return '🔐 MFA'
+    return builtInControls.join(', ')
+  }
+  return builtInControls || 'Grant'
+}
+
+// Coverage Detail Card with exclusions
+function CoverageDetailCard({
   title,
-  coverage
+  coverage,
+  entityType,
+  graphData,
+  selectedPolicyIds,
+  onGroupClick,
+  onRoleClick
 }: {
   title: string
   coverage: any
+  entityType: 'user' | 'app'
+  graphData: GraphData
+  selectedPolicyIds: Set<string>
+  onGroupClick?: (id: string, name: string) => void
+  onRoleClick?: (id: string, name: string) => void
 }) {
-  // Use coveredCount and uncoveredCount if available (when "All" is used)
-  // Otherwise fall back to Set sizes
-  const covered = coverage.coveredCount !== undefined ? coverage.coveredCount : coverage.covered.size
-  const uncovered = coverage.uncoveredCount !== undefined ? coverage.uncoveredCount : coverage.uncovered.size
+  const covered = coverage.coveredCount ?? coverage.covered.size
+  const uncovered = coverage.uncoveredCount ?? coverage.uncovered.size
   const excluded = coverage.excluded.size
   const total = coverage.actualTotal || coverage.total
-
+  const usedAllKeyword = coverage.coveredCount !== undefined && coverage.covered.size === 0 && coverage.coveredCount > 0
   const coveredPct = total > 0 ? Math.round((covered / total) * 100) : 0
-  const uncoveredPct = total > 0 ? Math.round((uncovered / total) * 100) : 0
+
+  // Get exclusion details from policies
+  const exclusionDetails = useMemo(() => {
+    const exclusions: Array<{ policyName: string; entities: Array<{ id: string; name: string; type: string }> }> = []
+    
+    const policies = graphData.nodes.filter(n => n.type === 'policy' && selectedPolicyIds.has(n.id))
+    
+    for (const policy of policies) {
+      const assignments = policy.properties?.assignments as any
+      if (!assignments?.exclude) continue
+      
+      const policyExclusions: Array<{ id: string; name: string; type: string }> = []
+      
+      if (entityType === 'user') {
+        const excludeUsers = assignments.exclude.users?.entities || []
+        const excludeGroups = assignments.exclude.groups?.entities || []
+        const excludeRoles = assignments.exclude.roles?.entities || []
+        
+        for (const u of excludeUsers) {
+          policyExclusions.push({ id: u.id, name: u.displayName || u.id, type: 'user' })
+        }
+        for (const g of excludeGroups) {
+          policyExclusions.push({ id: g.id, name: g.displayName || g.id, type: 'group' })
+        }
+        for (const r of excludeRoles) {
+          policyExclusions.push({ id: r.id, name: r.displayName || r.id, type: 'role' })
+        }
+      } else {
+        const targetResources = policy.properties?.targetResources as any
+        const apps = targetResources?.applications || targetResources
+        const excludeApps = apps?.exclude?.entities || []
+        
+        for (const a of excludeApps) {
+          policyExclusions.push({ id: a.id, name: a.displayName || a.id, type: 'app' })
+        }
+      }
+      
+      if (policyExclusions.length > 0) {
+        exclusions.push({ policyName: policy.label || policy.id, entities: policyExclusions })
+      }
+    }
+    
+    return exclusions
+  }, [graphData, selectedPolicyIds, entityType])
 
   return (
-    <div className="coverage-card">
-      <div className="coverage-card__header">
-        <strong>{title}</strong>
-        <span className="coverage-card__summary">
-          {covered} / {total} ({coveredPct}%)
-        </span>
-      </div>
-      <div className="coverage-card__bar">
-        <div className="coverage-card__bar-fill" style={{ width: `${coveredPct}%` }} />
-      </div>
-      <div className="coverage-card__details">
-        <span>Covered: {covered}</span>
-        <span>Uncovered: {uncovered} ({uncoveredPct}%)</span>
-        <span>Excluded: {excluded}</span>
-      </div>
-    </div>
-  )
-}
-
-// Grant Control Group Component
-function GrantControlGroup({
-  grantControl,
-  coverage,
-  isExpanded,
-  onToggle,
-  policies,
-  viewMode = 'grantControl'
-}: {
-  grantControl: string
-  coverage: GrantControlCoverage
-  isExpanded: boolean
-  onToggle: () => void
-  policies: Array<{ id: string; label: string; stateKey: string; stateLabel: string }>
-  viewMode?: 'grantControl' | 'condition'
-}) {
-  // If in condition mode, use the key as-is (e.g., "User Risk")
-  // Otherwise, look up the grant control label
-  const label = viewMode === 'condition' ? grantControl : (GRANT_CONTROL_LABELS[grantControl] || grantControl)
-
-  return (
-    <div className="grant-control-group">
-      <div className="grant-control-group__header" onClick={onToggle}>
-        <div className="grant-control-group__title">
-          <span className="grant-control-group__expand">{isExpanded ? '▼' : '▶'}</span>
-          <strong>{label}</strong>
-          <span className="grant-control-group__count">({coverage.policyCount} policies)</span>
+    <div className="coverage-detail-card">
+      <div className="coverage-detail-card__header">
+        <h3>{title}</h3>
+        <div className="coverage-detail-card__summary">
+          {covered.toLocaleString()} / {total.toLocaleString()} ({coveredPct}%)
         </div>
       </div>
 
-      <div className="grant-control-group__coverage">
-        <CoverageCard
-          title="Users"
-          coverage={coverage.users}
+      <div className="coverage-detail-card__bar">
+        <div 
+          className="coverage-detail-card__bar-fill covered" 
+          style={{ width: `${coveredPct}%` }}
         />
-        <CoverageCard
-          title="Applications"
-          coverage={coverage.applications}
-        />
-        <div className="coverage-card">
-          <div className="coverage-card__header">
-            <strong>Networks</strong>
+      </div>
+      
+      <div className="coverage-detail-card__stats">
+        {usedAllKeyword ? (
+          <div className="coverage-detail-card__all-keyword">
+            <span className="coverage-detail-card__all-badge">✓ All {entityType === 'user' ? 'Users' : 'Applications'}</span>
+            <span className="coverage-detail-card__formula">
+              = {total.toLocaleString()} total − {excluded.toLocaleString()} excluded = <strong>{covered.toLocaleString()} covered</strong>
+            </span>
           </div>
-          <div className="coverage-card__network-note">{coverage.networks.note}</div>
+        ) : (
+          <div className="coverage-detail-card__counts">
+            <span className="coverage-detail-card__count covered">✓ {covered.toLocaleString()} covered</span>
+            <span className="coverage-detail-card__count uncovered">○ {uncovered.toLocaleString()} uncovered</span>
         </div>
+        )}
       </div>
 
-      {isExpanded && (
-        <div className="grant-control-group__policies">
-          <h4>Policies in this group:</h4>
-          <ul>
-            {policies.map((p) => (
-              <li key={p.id}>
-                {p.label} <span className={`badge badge--${p.stateKey}`}>{p.stateLabel}</span>
-              </li>
-            ))}
-          </ul>
+      {exclusionDetails.length > 0 && (
+        <div className="coverage-detail-card__exclusions">
+          <h4>⚠️ Exclusions ({excluded} entities)</h4>
+          {exclusionDetails.map((exc, idx) => (
+            <div key={idx} className="coverage-detail-card__exclusion-policy">
+              <div className="coverage-detail-card__exclusion-policy-name">{exc.policyName}</div>
+              <div className="coverage-detail-card__exclusion-entities">
+                {exc.entities.map((entity, eIdx) => (
+                  <span 
+                    key={eIdx} 
+                    className={`coverage-detail-card__entity-pill ${entity.type}`}
+                    onClick={() => {
+                      if (entity.type === 'group' && onGroupClick) {
+                        onGroupClick(entity.id, entity.name)
+                      } else if (entity.type === 'role' && onRoleClick) {
+                        onRoleClick(entity.id, entity.name)
+                      }
+                    }}
+                    style={{ cursor: entity.type === 'group' || entity.type === 'role' ? 'pointer' : 'default' }}
+                  >
+                    {entity.type === 'user' && '👤'}
+                    {entity.type === 'group' && '👥'}
+                    {entity.type === 'role' && '🛡️'}
+                    {entity.type === 'app' && '📱'}
+                    {entity.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -240,6 +240,16 @@ function calculateUserCoverage(
   } as any
 }
 
+// Helper to check if an array of keywords contains "All" for applications
+function hasAllAppsKeyword(keywords: unknown): boolean {
+  if (!Array.isArray(keywords)) return false
+  const allKeywords = ['all', 'allapps', 'allapplications', 'allcloudapps', 'none']
+  return keywords.some((kw: unknown) => {
+    if (typeof kw !== 'string') return false
+    return allKeywords.includes(kw.toLowerCase())
+  })
+}
+
 // Calculate application coverage for a set of policies
 function calculateAppCoverage(
   policies: GraphNode[],
@@ -247,7 +257,11 @@ function calculateAppCoverage(
   index: ObjectsIndex
 ): CoverageByType {
   const allApps = getAllAppIds(index)
-  const actualTotal = index.totals.servicePrincipal
+  // Use servicePrincipal count (enterprise apps) as the primary total for CA policies
+  // CA policies target "All cloud apps" which means service principals, not app registrations
+  // Check both camelCase and lowercase keys since counts.json uses lowercase
+  const totals = index.totals as Record<string, number>
+  const actualTotal = totals.servicePrincipal || totals.serviceprincipal || totals.application || allApps.size || 1
   const covered = new Set<string>()
   const excluded = new Set<string>()
 
@@ -256,29 +270,49 @@ function calculateAppCoverage(
     
     if (!targetResources) continue
 
-    // Handle both old and new structure
+    // Handle multiple possible structures for application data
     const applications = targetResources.applications || targetResources
     
-    // Check for "All" keyword in include
-    const includeKeywords = applications.include?.keywords || []
-    const hasAllApps = includeKeywords.some((kw: string) => 
-      kw === 'All' || kw === 'AllApps' || kw === 'all' || kw === 'allapps'
-    )
+    // Check for "All" keyword in include - look in multiple possible locations
+    let includeKeywords: unknown[] = []
+    
+    // Try different keyword locations based on different data structures
+    if (applications.include?.keywords) {
+      includeKeywords = applications.include.keywords
+    } else if (applications.includeApplications) {
+      // Some policies use includeApplications with keywords directly
+      includeKeywords = Array.isArray(applications.includeApplications) ? applications.includeApplications : []
+    } else if (targetResources.includeApplications) {
+      includeKeywords = Array.isArray(targetResources.includeApplications) ? targetResources.includeApplications : []
+    }
+    
+    const hasAllApps = hasAllAppsKeyword(includeKeywords)
 
     if (hasAllApps) {
       // If "All" is present, we conceptually cover all apps EXCEPT exclusions
     } else {
       // Add explicitly included apps - try both structures
       const includeEntities = applications.include?.entities || 
-                             applications.include?.servicePrincipals?.entities || []
+                             applications.include?.servicePrincipals?.entities ||
+                             applications.entities || []
       for (const entity of includeEntities) {
         if (entity.id) covered.add(entity.id)
       }
     }
 
-    // Track excluded apps
+    // Track excluded apps - try multiple locations
+    // Note: excludeKeywords collected here for potential future use
+    if (applications.exclude?.keywords) {
+      // Future: handle exclude keywords
+    } else if (applications.excludeApplications) {
+      // Future: handle excludeApplications array
+    } else if (targetResources.excludeApplications) {
+      // Future: handle targetResources.excludeApplications
+    }
+    
     const excludeEntities = applications.exclude?.entities ||
-                           applications.exclude?.servicePrincipals?.entities || []
+                           applications.exclude?.servicePrincipals?.entities ||
+                           []
     for (const entity of excludeEntities) {
       if (entity.id) {
         excluded.add(entity.id)
@@ -292,8 +326,13 @@ function calculateAppCoverage(
     const targetResources = policy.properties?.targetResources as any
     if (!targetResources) continue
     const applications = targetResources.applications || targetResources
-    const includeKeywords = applications.include?.keywords || []
-    if (includeKeywords.some((kw: string) => kw === 'All' || kw === 'AllApps' || kw === 'all' || kw === 'allapps')) {
+    
+    // Check multiple keyword locations
+    const includeKeywords = applications.include?.keywords || 
+                           applications.includeApplications ||
+                           targetResources.includeApplications || []
+    
+    if (hasAllAppsKeyword(includeKeywords)) {
       hasAllInAnyPolicy = true
       break
     }

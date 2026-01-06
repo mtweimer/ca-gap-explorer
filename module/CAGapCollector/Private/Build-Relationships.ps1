@@ -12,20 +12,29 @@ function Add-Entity {
         Adds an entity to the analysis entities collection.
     #>
     param(
-        [Parameter(Mandatory)] [hashtable]$Analysis,
+        [Parameter(Mandatory)] $Analysis,
         [Parameter(Mandatory)] [string]$CollectionName,
-        [Parameter(Mandatory)] [hashtable]$Entity
+        [Parameter(Mandatory)] $Entity
     )
 
-    if (-not $Entity['id']) { return }
+    # Get entity ID - handle both hashtable and PSObject
+    $entityId = $null
+    if ($Entity -is [System.Collections.IDictionary]) {
+        $entityId = $Entity['id']
+    } elseif ($Entity -is [psobject]) {
+        $entityId = $Entity.id
+    }
+    
+    if (-not $entityId) { return }
 
-    if (-not ($Analysis.entities.ContainsKey($CollectionName))) {
+    # Check if collection exists using Contains (works for both Hashtable and OrderedDictionary)
+    if (-not ($Analysis.entities.Contains($CollectionName))) {
         $Analysis.entities[$CollectionName] = @{}
     }
 
     $collection = $Analysis.entities[$CollectionName]
-    if (-not ($collection.ContainsKey($Entity['id']))) {
-        $collection[$Entity['id']] = $Entity
+    if (-not ($collection.Contains($entityId))) {
+        $collection[$entityId] = $Entity
     }
 }
 
@@ -35,7 +44,7 @@ function Add-Relationship {
         Adds a relationship to the analysis relationships collection.
     #>
     param(
-        [hashtable]$Analysis,
+        $Analysis,
         [string]$PolicyId,
         [string]$PolicyName,
         [string]$Scope,

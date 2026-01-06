@@ -167,13 +167,15 @@ function Export-CAGraph {
                 }
             }
 
-            # Add edge
-            Add-GraphEdge -FromId $rel.policyId -ToId $targetId -Relationship "$($rel.scope):$targetType" -Properties @{
+            # Add edge - use safe property access
+            $edgeProps = @{
                 policyName = $rel.policyName
                 targetDisplayName = $targetName
-                via = $rel.via
-                description = $rel.description
             }
+            if ($rel.PSObject.Properties['via'] -and $rel.via) { $edgeProps.via = $rel.via }
+            if ($rel.PSObject.Properties['description'] -and $rel.description) { $edgeProps.description = $rel.description }
+            
+            Add-GraphEdge -FromId $rel.policyId -ToId $targetId -Relationship "$($rel.scope):$targetType" -Properties $edgeProps
         }
     }
 
@@ -184,12 +186,33 @@ function Export-CAGraph {
             if ($singularType -eq 'namedLocation') { $singularType = 'namedLocation' }
             
             $collection = $policyData.entities.$entityType
-            if ($collection) {
-                foreach ($entityId in $collection.PSObject.Properties.Name) {
-                    $entity = $collection.$entityId
-                    $label = if ($entity.displayName) { $entity.displayName } else { $entityId }
-                    Add-GraphNode -Id $entityId -Label $label -Type $singularType -Properties $entity
+            if ($null -eq $collection) { continue }
+            
+            # Handle both hashtable/dictionary and PSObject - use try/catch for safety
+            $entityIds = @()
+            try {
+                if ($collection -is [System.Collections.IDictionary]) {
+                    $entityIds = @($collection.Keys)
+                } else {
+                    # PSObject from JSON - get property names
+                    $props = $collection.PSObject.Properties
+                    if ($props) {
+                        $entityIds = @($props | ForEach-Object { $_.Name })
+                    }
                 }
+            } catch {
+                Write-Verbose "Could not enumerate $entityType collection: $_"
+                continue
+            }
+            
+            foreach ($entityId in $entityIds) {
+                if (-not $entityId) { continue }
+                $entity = $collection.$entityId
+                $label = $entityId
+                if ($entity -and $entity.PSObject.Properties['displayName'] -and $entity.displayName) {
+                    $label = $entity.displayName
+                }
+                Add-GraphNode -Id $entityId -Label $label -Type $singularType -Properties $entity
             }
         }
     }
