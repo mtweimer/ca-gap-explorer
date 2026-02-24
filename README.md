@@ -12,8 +12,6 @@ Author: Michael Weimer
 - **Gap Analysis**: Identify coverage gaps, risky exclusions, and missing controls
 - **Graph Visualization**: Interactive D3.js-based graph showing policy relationships
 - **Deep Policy Exploration**: Drill down into policies with expandable group memberships and role assignments
-- **Exposure Matrix**: Cross-policy analysis to find users/apps not covered by policies
-- **BloodHound Integration**: Export to OpenGraph format for BloodHound CE visualization
 - **Cross-Platform**: PowerShell module works on Windows, macOS, and Linux
 - **Docker Support**: Containerized deployment for easy setup
 
