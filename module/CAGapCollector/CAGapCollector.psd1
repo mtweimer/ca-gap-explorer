@@ -8,7 +8,7 @@
     ModuleVersion = '1.0.0'
     
     # ID used to uniquely identify this module
-    GUID = 'a8b9c0d1-e2f3-4a5b-6c7d-8e9f0a1b2c3d'
+    GUID = '00000000-0000-0000-0000-000000000000'  # Generate a new GUID before publishing
     
     # Author of this module
     Author = 'Hoplite Industries'

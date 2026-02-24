@@ -57,3 +57,14 @@ coverage/
 
 TODO.md
 QUICKSTART.md
+SECURITY.md
+README.md.bak
+
+# NPM
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.eslintcache
+.stylelintcache
