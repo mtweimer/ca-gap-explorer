@@ -2,9 +2,8 @@
 
 A comprehensive tool for analyzing Microsoft Entra ID (Azure AD) Conditional Access Policies to identify security gaps, visualize policy relationships, and understand coverage across your organization.  This tool is meant to be a playground where you can analyze the control layers that are implemented via conditional access.  You can stack and analyze different policies on top of one another to see what gaps exist across control layers. 
 
-Author: Michael Weimer 
-- [X](https://x.com/michaelweimer_) 
-- [Blog](https://michaelweimer.com/)
+**Author**: Michael Weimer / [X](https://x.com/michaelweimer_) / [Blog](https://michaelweimer.com/)
+
 
 ## Features
 
