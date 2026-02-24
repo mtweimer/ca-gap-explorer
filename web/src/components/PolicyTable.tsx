@@ -12,11 +12,16 @@ interface PolicyTableProps {
 }
 
 interface EntityCounts {
-  user: number
-  group: number
-  serviceprincipal: number
-  application: number
-  role: number
+  user?: number
+  users?: number
+  group?: number
+  groups?: number
+  serviceprincipal?: number
+  servicePrincipals?: number
+  application?: number
+  applications?: number
+  role?: number
+  roles?: number
 }
 
 interface PolicyFullDetails {
