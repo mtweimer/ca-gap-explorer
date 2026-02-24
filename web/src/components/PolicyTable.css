@@ -91,7 +91,7 @@
 
 .badge--enabled {
   background: rgba(46, 213, 115, 0.15);
-  color: #2ed573;
+  color: #7AB8D9;
 }
 
 .badge--reportOnly {
@@ -146,7 +146,7 @@
 
 .count-badge--include {
   background: rgba(46, 213, 115, 0.15);
-  color: #2ed573;
+  color: #7AB8D9;
 }
 
 .count-badge--exclude {
@@ -303,7 +303,7 @@
 
 .detail-chip--include {
   background: rgba(46, 213, 115, 0.15);
-  color: #2ed573;
+  color: #7AB8D9;
 }
 
 .detail-chip--exclude {
@@ -319,12 +319,12 @@
 
 .detail-chip--grant {
   background: rgba(46, 213, 115, 0.15);
-  color: #2ed573;
+  color: #7AB8D9;
 }
 
 .detail-chip--configured {
   background: rgba(46, 213, 115, 0.15);
-  color: #2ed573;
+  color: #7AB8D9;
 }
 
 .detail-chip--strict {

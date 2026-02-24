@@ -298,7 +298,7 @@
 }
 
 .whatif-simulator__decision--grant {
-  border-left: 4px solid #10b981;
+  border-left: 4px solid #7AB8D9;
   background: rgba(16, 185, 129, 0.1);
 }
 
@@ -362,7 +362,7 @@
 .control-chip--compliantDevice,
 .control-chip--domainJoinedDevice {
   background: rgba(16, 185, 129, 0.2);
-  color: #34d399;
+  color: #7AB8D9;
 }
 
 .whatif-simulator__auth-strength {
@@ -423,7 +423,7 @@
 }
 
 .whatif-simulator__policy-result-header .state--enabled {
-  color: #10b981;
+  color: #7AB8D9;
 }
 
 .whatif-simulator__policy-result-header .state--enabledForReportingButNotEnforced {

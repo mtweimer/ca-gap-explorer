@@ -241,6 +241,7 @@ function App() {
     <main className="app">
       <header className="app__header">
         <div className="app__title">
+          <img src="/hoplite-logo.png" alt="Hoplite" />
           <h1>Conditional Access Gap Explorer</h1>
         </div>
         <FilterBar
@@ -284,6 +285,15 @@ function App() {
           </button>
           <button
             type="button"
+            className={viewMode === 'graph' ? 'active' : ''}
+            onClick={() => setViewMode('graph')}
+            title="Visual policy relationships"
+          >
+            Graph
+          </button>
+          {/* Hidden for initial release - not ready for presentation
+          <button
+            type="button"
             className={viewMode === 'conditions' ? 'active' : ''}
             onClick={() => setViewMode('conditions')}
             title="Analyze by condition, grant, and session controls"
@@ -300,20 +310,13 @@ function App() {
           </button>
           <button
             type="button"
-            className={viewMode === 'graph' ? 'active' : ''}
-            onClick={() => setViewMode('graph')}
-            title="Visual policy relationships"
-          >
-            Graph
-          </button>
-          <button
-            type="button"
             className={viewMode === 'whatif' ? 'active' : ''}
             onClick={() => setViewMode('whatif')}
             title="What If? Policy Simulator"
           >
             What If
           </button>
+          */}
         </div>
       </header>
 

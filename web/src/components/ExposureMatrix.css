@@ -56,7 +56,7 @@
 }
 
 .exposure-matrix__stat--covered {
-  border-left: 3px solid #2ed573;
+  border-left: 3px solid #7AB8D9;
 }
 
 .exposure-matrix__stat--partial {
@@ -184,7 +184,7 @@
 
 .exposure-matrix__badge--covered {
   background: rgba(46, 213, 115, 0.15);
-  color: #2ed573;
+  color: #7AB8D9;
 }
 
 .exposure-matrix__badge--partial {

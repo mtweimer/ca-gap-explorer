@@ -325,6 +325,6 @@ function getRiskColor(score: number): string {
   if (score >= 60) return '#ff6b81'
   if (score >= 40) return '#ffa502'
   if (score >= 20) return '#ffdd57'
-  return '#2ed573'
+  return '#7AB8D9'
 }
 

@@ -1,9 +1,8 @@
 # Conditional Access Gap Analyzer
 
-[![CI](https://github.com/hoplite-industries/conditional-access-gap-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/hoplite-industries/conditional-access-gap-analyzer/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 A comprehensive tool for analyzing Microsoft Entra ID (Azure AD) Conditional Access Policies to identify security gaps, visualize policy relationships, and understand coverage across your organization.  This tool is meant to be a playground where you can analyze the control layers that are implemented via conditional access.  You can stack and analyze different policies on top of one another to see what gaps exist across control layers. 
+
+Author: Michael Weimer (X)[https://x.com/michaelweimer_] (Blog)[https://michaelweimer.com/]
 
 ## Features
 
@@ -47,9 +46,15 @@ Connect-CAGapGraph -UseDeviceCode
 Get-CAPolicies -OutputPath ./output
 Export-CAGraph -InputPath ./output/conditional_access_policies.json -OutputPath ./output
 
+# Copy results to web UI
+Copy-Item ./output/conditional_access_*.json ./web/public/
+Copy-Item -Recurse -Force ./output/entities/ ./web/public/entities/
+
 # Disconnect when done
 Disconnect-CAGapGraph
 ```
+
+> **Tip:** Use `./scripts/run-all.ps1` to run the complete pipeline, which handles all collection, graph building, and file copying automatically.
 
 ### View Results
 
@@ -60,6 +65,39 @@ npm run dev
 
 # Open http://localhost:5173 in your browser
 ```
+
+### Clearing Old Results and Re-running Collection
+
+To refresh your data with a new collection, clear the output directories and re-run:
+
+```bash
+# Clear all output data
+rm -rf output/*.json output/*.csv output/entities/
+rm -rf web/public/conditional_access_*.json web/public/entities/
+```
+
+**Option 1: Use the pipeline script (recommended)**
+
+```powershell
+./scripts/run-all.ps1 -SkipConnect   # If already connected to MS Graph
+# OR
+./scripts/run-all.ps1                 # To connect via device code flow
+```
+
+The `run-all.ps1` script handles collection, graph building, and copying files to `web/public/` automatically.
+
+**Option 2: Run individual commands**
+
+```powershell
+Get-CAPolicies -OutputPath ./output
+Export-CAGraph -InputPath ./output/conditional_access_policies.json -OutputPath ./output
+
+# Don't forget to copy results to web/public/
+Copy-Item ./output/conditional_access_*.json ./web/public/
+Copy-Item -Recurse -Force ./output/entities/ ./web/public/entities/
+```
+
+After either option, refresh your browser to see the new data.
 
 ## Docker Quick Start
 
@@ -76,12 +114,7 @@ docker-compose --profile web up
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [Getting Started](docs/getting-started.md) | Detailed setup and first run guide |
-| [Authentication](docs/authentication.md) | Azure AD app registration and auth methods |
-| [BloodHound Integration](docs/bloodhound-integration.md) | Exporting to OpenGraph format |
-| [API Reference](docs/api-reference.md) | PowerShell module command reference |
+For detailed authentication options including app registration, service principals, and managed identity, see [Authentication Guide](docs/authentication.md).
 
 ## Architecture
 

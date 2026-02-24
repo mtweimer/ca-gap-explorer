@@ -60,6 +60,10 @@ QUICKSTART.md
 SECURITY.md
 README.md.bak
 
+# Docs - only keep authentication.md
+docs/*
+!docs/authentication.md
+
 # NPM
 .npm/
 npm-debug.log*

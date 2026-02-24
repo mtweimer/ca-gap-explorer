@@ -12,8 +12,9 @@
 }
 
 .filterbar__label {
-  color: #94b2ff;
-  font-size: 0.9rem;
+  color: var(--accent-primary);
+  font-size: 0.85rem;
+  font-weight: 500;
 }
 
 .filterbar__chips {
@@ -24,32 +25,46 @@
 
 .chip {
   padding: 0.25rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid rgba(79, 140, 255, 0.35);
-  background: rgba(79, 140, 255, 0.15);
-  color: #cfe0ff;
+  border-radius: 4px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
   font-size: 0.8rem;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chip:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
 }
 
 .chip--ghost {
-  border-color: rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-subtle);
+  background: var(--bg-secondary);
 }
 
 .chip--active {
-  border-color: rgba(126, 240, 194, 0.6);
-  background: rgba(126, 240, 194, 0.2);
-  color: #baf7dc;
+  border-color: var(--accent-primary);
+  background: rgba(185, 163, 130, 0.2);
+  color: var(--accent-primary);
 }
 
 .filterbar__search input[type='search'] {
   padding: 0.5rem 0.75rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(12, 18, 28, 0.75);
-  color: #e6eeff;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   min-width: 220px;
+  transition: border-color 0.2s;
 }
 
+.filterbar__search input[type='search']:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
 
+.filterbar__search input[type='search']::placeholder {
+  color: var(--text-muted);
+}
