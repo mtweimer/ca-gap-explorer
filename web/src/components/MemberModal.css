@@ -194,7 +194,7 @@
 
 .member-modal__export {
   padding: 0.625rem 1rem;
-  background: var(--success-color, #10b981);
+  background: var(--success-color, #7AB8D9);
   color: white;
   border: none;
   border-radius: 8px;
@@ -208,7 +208,7 @@
 }
 
 .member-modal__export:hover {
-  background: #059669;
+  background: #5A9BC4;
   transform: translateY(-1px);
 }
 
@@ -277,7 +277,7 @@
 }
 
 .member-modal__direct {
-  color: var(--success-color, #10b981);
+  color: var(--success-color, #7AB8D9);
   font-size: 0.85rem;
 }
 

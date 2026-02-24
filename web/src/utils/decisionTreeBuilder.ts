@@ -106,11 +106,11 @@ export interface PolicyColor {
 
 const POLICY_COLORS = [
   '#4299e1', // blue
-  '#48bb78', // green
+  '#B9A382', // khaki
   '#ed8936', // orange
   '#9f7aea', // purple
   '#f56565', // red
-  '#38b2ac', // teal
+  '#7AB8D9', // sky blue
   '#ed64a6', // pink
   '#ecc94b', // yellow
   '#667eea', // indigo

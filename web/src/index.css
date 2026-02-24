@@ -1,3 +1,54 @@
+/* Hoplite Brand Colors */
+:root {
+  /* Primary */
+  --color-cream: #FAF9F7;
+  --color-white: #FFFFFF;
+  --color-khaki: #B9A382;
+  --color-charcoal: #1E1F21;
+  
+  /* Extended - Orange */
+  --color-orange-professional: #8C441B;
+  --color-orange-human: #FAB977;
+  --color-orange-innovation: #EEAE33;
+  
+  /* Extended - Purple */
+  --color-purple-professional: #373557;
+  --color-purple-human: #DAC5EE;
+  --color-purple-innovation: #AD6CFF;
+  
+  /* Semantic - Dark Charcoal Theme */
+  --bg-primary: #141516;
+  --bg-secondary: #1A1B1D;
+  --bg-tertiary: #222325;
+  --bg-card: #1A1B1D;
+  --bg-card-hover: #252628;
+  
+  --text-primary: #FAF9F7;
+  --text-secondary: #B8B6B1;
+  --text-muted: #7A7875;
+  
+  --accent-primary: #B9A382;
+  --accent-secondary: #8C7A65;
+  --accent-hover: #CDB899;
+  
+  --success: #7AB8D9;
+  --success-color: #7AB8D9;
+  --warning: #EEAE33;
+  --warning-color: #EEAE33;
+  --error: #E05545;
+  --error-color: #E05545;
+  --info: #7AB8D9;
+  
+  /* Component compatibility variables */
+  --accent-color: #B9A382;
+  --border-color: rgba(185, 163, 130, 0.2);
+  --text-tertiary: #5A5855;
+  
+  --border-subtle: rgba(185, 163, 130, 0.1);
+  --border-default: rgba(185, 163, 130, 0.2);
+  --border-strong: rgba(185, 163, 130, 0.35);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,8 +63,8 @@ body,
 }
 
 body {
-  background: #0f1624;
-  color: #f2f6fc;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -27,11 +78,31 @@ button {
 }
 
 button:focus-visible {
-  outline: 2px solid rgba(79, 140, 255, 0.8);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
-  }
+}
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
 }

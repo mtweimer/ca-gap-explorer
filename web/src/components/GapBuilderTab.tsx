@@ -304,9 +304,9 @@ export function GapBuilderTab({ graphData, selectedPolicyIds, rawPolicies }: Gap
   }
 
   // Get totals for display
-  const userTotal = counts?.user ?? indexWithCounts.totals.user ?? 0
-  const appTotal = counts?.serviceprincipal ?? counts?.application ?? indexWithCounts.totals.servicePrincipal ?? 0
-  const groupTotal = counts?.group ?? 0
+  const userTotal = counts?.users ?? counts?.user ?? indexWithCounts.totals.user ?? 0
+  const appTotal = counts?.servicePrincipals ?? counts?.serviceprincipal ?? counts?.applications ?? counts?.application ?? indexWithCounts.totals.servicePrincipal ?? 0
+  const groupTotal = counts?.groups ?? counts?.group ?? 0
 
   return (
     <div className="gap-builder-v2">

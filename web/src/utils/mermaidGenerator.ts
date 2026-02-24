@@ -131,7 +131,7 @@ export function generateMermaidDiagram(
   lines.push('    %% Styling')
   lines.push('    classDef startNode fill:#1a365d,stroke:#2b6cb0,color:#fff')
   lines.push('    classDef conditionNode fill:#2d3748,stroke:#4a5568,color:#e2e8f0')
-  lines.push('    classDef controlNode fill:#276749,stroke:#38a169,color:#fff')
+  lines.push('    classDef controlNode fill:#2563eb,stroke:#3b82f6,color:#fff')
   lines.push('    classDef blockNode fill:#9b2c2c,stroke:#c53030,color:#fff')
   lines.push('    classDef gapNode fill:#744210,stroke:#d69e2e,color:#fff,stroke-dasharray:5')
   lines.push('    classDef overlapNode stroke-width:3px')
@@ -334,7 +334,7 @@ export function generateSinglePolicyDiagram(
   // Styles
   lines.push('')
   lines.push('    classDef blockStyle fill:#9b2c2c,stroke:#c53030,color:#fff')
-  lines.push('    classDef grantStyle fill:#276749,stroke:#38a169,color:#fff')
+  lines.push('    classDef grantStyle fill:#2563eb,stroke:#3b82f6,color:#fff')
   
   return lines.join('\n')
 }

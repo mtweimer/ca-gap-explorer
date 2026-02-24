@@ -193,7 +193,7 @@ export function WhatIfSimulator({ graphData: _graphData, rawPolicies, policySumm
   }
   
   const stateIndicators: Record<string, { icon: string; color: string }> = {
-    enabled: { icon: '●', color: '#10b981' },
+    enabled: { icon: '●', color: '#7AB8D9' },
     reportOnly: { icon: '●', color: '#f59e0b' },
     disabled: { icon: '●', color: '#6b7280' }
   }

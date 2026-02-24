@@ -30,24 +30,29 @@ try {
     # Users
     Write-Host 'Collecting users…' -ForegroundColor Cyan
     $users = @(Get-MgUser -All -ConsistencyLevel eventual |
-        Select-Object id, displayName, userPrincipalName, mail, accountEnabled, createdDateTime)
+        Select-Object @{N='id';E={$_.Id}}, @{N='displayName';E={$_.DisplayName}}, 
+                      @{N='userPrincipalName';E={$_.UserPrincipalName}}, @{N='mail';E={$_.Mail}}, 
+                      @{N='accountEnabled';E={$_.AccountEnabled}}, @{N='createdDateTime';E={$_.CreatedDateTime}})
     $users | ConvertTo-Json -Depth 6 | Out-File (Join-Path $OutputDir 'users.json') -Encoding utf8
 
     # Groups
     Write-Host 'Collecting groups…' -ForegroundColor Cyan
     $groups = @(Get-MgGroup -All -ConsistencyLevel eventual |
-        Select-Object id, displayName, securityEnabled, groupTypes, mailNickname)
+        Select-Object @{N='id';E={$_.Id}}, @{N='displayName';E={$_.DisplayName}}, 
+                      @{N='securityEnabled';E={$_.SecurityEnabled}}, @{N='groupTypes';E={$_.GroupTypes}}, 
+                      @{N='mailNickname';E={$_.MailNickname}})
     $groups | ConvertTo-Json -Depth 6 | Out-File (Join-Path $OutputDir 'groups.json') -Encoding utf8
 
     # Service Principals
     Write-Host 'Collecting service principals…' -ForegroundColor Cyan
     $sps = @(Get-MgServicePrincipal -All -ConsistencyLevel eventual |
-        Select-Object id, displayName, appId, servicePrincipalType)
-    $sps | ConvertTo-Json -Depth 6 | Out-File (Join-Path $OutputDir 'service_principals.json') -Encoding utf8
+        Select-Object @{N='id';E={$_.Id}}, @{N='displayName';E={$_.DisplayName}}, 
+                      @{N='appId';E={$_.AppId}}, @{N='servicePrincipalType';E={$_.ServicePrincipalType}})
+    $sps | ConvertTo-Json -Depth 6 | Out-File (Join-Path $OutputDir 'servicePrincipals.json') -Encoding utf8
 
     # Directory roles (active)
     Write-Host 'Collecting directory roles…' -ForegroundColor Cyan
-    $roles = Get-MgDirectoryRole -All | Select-Object id, displayName
+    $roles = Get-MgDirectoryRole -All | Select-Object @{N='id';E={$_.Id}}, @{N='displayName';E={$_.DisplayName}}
     $roles | ConvertTo-Json -Depth 4 | Out-File (Join-Path $OutputDir 'roles.json') -Encoding utf8
 
     # Named locations
@@ -68,13 +73,13 @@ try {
             ipRanges = $ipRanges
         }
     }
-    $locs | ConvertTo-Json -Depth 8 | Out-File (Join-Path $OutputDir 'named_locations.json') -Encoding utf8
+    $locs | ConvertTo-Json -Depth 8 | Out-File (Join-Path $OutputDir 'namedLocations.json') -Encoding utf8
 
     # Optional applications (for appId→name mapping)
     Write-Host 'Collecting applications (optional)…' -ForegroundColor DarkGray
     try {
         $apps = Get-MgApplication -All -ConsistencyLevel eventual |
-            Select-Object id, displayName, appId
+            Select-Object @{N='id';E={$_.Id}}, @{N='displayName';E={$_.DisplayName}}, @{N='appId';E={$_.AppId}}
     } catch { $apps = @() }
     $apps | ConvertTo-Json -Depth 4 | Out-File (Join-Path $OutputDir 'applications.json') -Encoding utf8
 

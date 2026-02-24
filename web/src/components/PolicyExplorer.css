@@ -51,7 +51,7 @@
 
 .policy-explorer__state--enabled {
   background: rgba(46, 213, 115, 0.15);
-  color: #2ed573;
+  color: #7AB8D9;
   border: 1px solid rgba(46, 213, 115, 0.3);
 }
 
@@ -122,7 +122,7 @@
 }
 
 .policy-explorer__section--include {
-  border-left: 3px solid #2ed573;
+  border-left: 3px solid #7AB8D9;
 }
 
 .policy-explorer__section--exclude {

@@ -487,7 +487,7 @@ function PolicyExpandedDetails({
               {details.includeKeywords.map((kw, i) => (
                 <span key={`ikw-${i}`} className="detail-chip detail-chip--keyword">
                   ✓ {kw}
-                  {kw.toLowerCase() === 'all' || kw.toLowerCase() === 'allusers' ? ` (${counts?.user || '?'} users)` : ''}
+                  {kw.toLowerCase() === 'all' || kw.toLowerCase() === 'allusers' ? ` (${counts?.users ?? counts?.user ?? '?'} users)` : ''}
                 </span>
               ))}
               {details.includeUsers.map((u, i) => (
@@ -577,7 +577,7 @@ function PolicyExpandedDetails({
                 <span key={`akw-${i}`} className="detail-chip detail-chip--keyword">
                   ✓ {kw}
                   {(kw.toLowerCase() === 'all' || kw.toLowerCase() === 'allapps' || kw.toLowerCase() === 'none') 
-                    ? ` (${counts?.serviceprincipal || counts?.application || '?'} apps)` 
+                    ? ` (${counts?.servicePrincipals ?? counts?.serviceprincipal ?? counts?.applications ?? counts?.application ?? '?'} apps)` 
                     : ''
                   }
                 </span>

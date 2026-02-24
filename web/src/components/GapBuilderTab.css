@@ -41,7 +41,7 @@
 .gap-builder-v2__export-btn {
   margin-left: auto;
   padding: 0.625rem 1rem;
-  background: var(--success-color, #10b981);
+  background: var(--success-color, #7AB8D9);
   color: white;
   border: none;
   border-radius: 8px;
@@ -52,7 +52,7 @@
 }
 
 .gap-builder-v2__export-btn:hover {
-  background: #059669;
+  background: #5A9BC4;
   transform: translateY(-1px);
 }
 
@@ -141,7 +141,7 @@
 
 .gap-builder-v2__control-card.active {
   background: rgba(16, 185, 129, 0.1);
-  border-color: var(--success-color, #10b981);
+  border-color: var(--success-color, #7AB8D9);
 }
 
 .gap-builder-v2__control-card.session.active {
@@ -240,7 +240,7 @@
 }
 
 .coverage-detail-card__bar-fill.covered {
-  background: linear-gradient(90deg, var(--success-color, #10b981) 0%, #059669 100%);
+  background: linear-gradient(90deg, var(--success-color, #7AB8D9) 0%, #5A9BC4 100%);
 }
 
 .coverage-detail-card__stats {
@@ -258,7 +258,7 @@
   align-items: center;
   gap: 0.25rem;
   background: rgba(16, 185, 129, 0.2);
-  color: var(--success-color, #10b981);
+  color: var(--success-color, #7AB8D9);
   padding: 0.25rem 0.75rem;
   border-radius: 99px;
   font-size: 0.85rem;
@@ -285,7 +285,7 @@
 }
 
 .coverage-detail-card__count.covered {
-  color: var(--success-color, #10b981);
+  color: var(--success-color, #7AB8D9);
 }
 
 .coverage-detail-card__count.uncovered {
@@ -407,7 +407,7 @@
 }
 
 .gap-builder-v2__network-card.allow {
-  border-left: 4px solid var(--success-color, #10b981);
+  border-left: 4px solid var(--success-color, #7AB8D9);
 }
 
 .gap-builder-v2__network-card-header {
@@ -438,7 +438,7 @@
 
 .gap-builder-v2__network-action--allow {
   background: rgba(16, 185, 129, 0.2);
-  color: var(--success-color, #10b981);
+  color: var(--success-color, #7AB8D9);
 }
 
 .gap-builder-v2__network-summary {
@@ -493,7 +493,7 @@
 
 .gap-builder-v2__network-pill.included {
   background: rgba(16, 185, 129, 0.2);
-  color: var(--success-color, #10b981);
+  color: var(--success-color, #7AB8D9);
 }
 
 .gap-builder-v2__network-pill.blocked {
