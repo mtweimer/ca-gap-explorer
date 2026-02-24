@@ -3,9 +3,7 @@
 [![CI](https://github.com/hoplite-industries/conditional-access-gap-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/hoplite-industries/conditional-access-gap-analyzer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A comprehensive tool for analyzing Microsoft Entra ID (Azure AD) Conditional Access Policies to identify security gaps, visualize policy relationships, and understand coverage across your organization.
-
-![CA Gap Analyzer Dashboard](docs/assets/dashboard-preview.png)
+A comprehensive tool for analyzing Microsoft Entra ID (Azure AD) Conditional Access Policies to identify security gaps, visualize policy relationships, and understand coverage across your organization.  This tool is meant to be a playground where you can analyze the control layers that are implemented via conditional access.  You can stack and analyze different policies on top of one another to see what gaps exist across control layers. 
 
 ## Features
 
@@ -25,7 +23,7 @@ A comprehensive tool for analyzing Microsoft Entra ID (Azure AD) Conditional Acc
 - PowerShell 7.x or Windows PowerShell 5.1
 - Microsoft Graph PowerShell SDK
 - Node.js 18+ (for web UI development)
-- Azure AD permissions: `Policy.Read.All`, `Directory.Read.All`, `Group.Read.All`, `Application.Read.All`, `RoleManagement.Read.Directory`
+- Entra ID permissions: `Policy.Read.All`, `Directory.Read.All`, `Group.Read.All`, `Application.Read.All`, `RoleManagement.Read.Directory`
 
 ### Installation
 
@@ -89,39 +87,28 @@ docker-compose --profile web up
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     CA Gap Analyzer                              │
+│                     CA Gap Analyzer                             │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
+│                                                                 │
 │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐       │
 │  │  PowerShell  │    │    Graph     │    │   React UI   │       │
 │  │   Module     │───▶│    JSON      │───▶│  Dashboard   │       │
 │  │              │    │              │    │              │       │
 │  └──────┬───────┘    └──────────────┘    └──────────────┘       │
-│         │                    │                                   │
-│         ▼                    ▼                                   │
+│         │                    │                                  │
+│         ▼                    ▼                                  │
 │  ┌──────────────┐    ┌──────────────┐                           │
 │  │  MS Graph    │    │  OpenGraph   │                           │
 │  │    API       │    │   Export     │                           │
 │  └──────────────┘    └──────────────┘                           │
-│                              │                                   │
-│                              ▼                                   │
+│                              │                                  │
+│                              ▼                                  │
 │                      ┌──────────────┐                           │
 │                      │  BloodHound  │                           │
 │                      │     CE       │                           │
 │                      └──────────────┘                           │
 └─────────────────────────────────────────────────────────────────┘
 ```
-
-## Screenshots
-
-### Gap Analysis Dashboard
-Analyze coverage by grant control, condition, or policy with expandable details.
-
-### Policy Graph Visualization
-Interactive graph showing policy relationships with users, groups, roles, and applications.
-
-### Exposure Matrix
-Identify which users and applications are NOT covered by your Conditional Access policies.
 
 ## Supported Conditions and Controls
 
