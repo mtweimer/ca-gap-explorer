@@ -27,7 +27,7 @@ A comprehensive tool for analyzing Microsoft Entra ID (Azure AD) Conditional Acc
 
 ```bash
 # Clone the repository
-git clone https://github.com/hoplite-industries/conditional-access-gap-analyzer.git
+git clone https://github.com/mtweimer/ca-gap-explorer.git
 cd conditional-access-gap-analyzer
 
 # Install PowerShell module
